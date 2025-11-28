@@ -5,9 +5,37 @@ from collections import deque
 import json
 import os
 
+# Inicialización de Pygame
+    # Constantes
+        #ANCHO_MAPA = 21
+    # Colores
+        #NEGRO = (0, 0, 0)
+
+
 # Clases de Casillas (igual)
-    # varias
-# Clase Mapa (igual)
+class Casilla:
+    def _init_(self, x, y):
+        self.x = x
+        self.y = y
+    def transitable_por_jugador(self): return False
+    def transitable_por_enemigo(self): return False
+
+class Camino(Casilla):
+    def transitable_por_jugador(self): return True
+    def transitable_por_enemigo(self): return True
+
+class Muro(Casilla):
+    def transitable_por_jugador(self): return False
+    def transitable_por_enemigo(self): return False
+
+class Liana(Casilla):
+    def transitable_por_jugador(self): return False
+    def transitable_por_enemigo(self): return True
+
+class Tunel(Casilla):
+    def transitable_por_jugador(self): return True
+    def transitable_por_enemigo(self): return False
+
 class Mapa:
     def __init__(self, ancho, alto):
         self.ancho = ancho
@@ -120,8 +148,90 @@ class Mapa:
                         padres[(nx,ny)] = nodo
                         queue.append((nx,ny))
         return None
+    
 
-# Clases de Entidades (igual)
+    def convertir_a_objetos(self):
+        objetos = []
+        for x in range(self.alto):
+            fila = []
+            for y in range(self.ancho):
+                valor = self.matriz[x][y]
+                if valor == 0: 
+                    fila.append(Camino(x, y))
+                elif valor == 1: 
+                    fila.append(Muro(x, y))
+                elif valor == 2: 
+                    fila.append(Liana(x, y))
+                elif valor == 3: 
+                    fila.append(Tunel(x, y))
+                else:
+                    # Por defecto, muro si no reconoce el valor
+                    fila.append(Muro(x, y))
+            objetos.append(fila)
+        self.objetos = objetos
+        return objetos
+
+    # Aux: comprobar transitabilidad directamente desde la matriz (útil antes de convertir)
+    def _es_transitable_numero(self, x, y, es_jugador=True):
+        v = self.matriz[x][y]
+        if v == 0:  # camino
+            return True
+        if v == 1:  # muro
+            return False
+        if v == 2:  # liana -> solo enemigo
+            return not es_jugador
+        if v == 3:  # tunel -> solo jugador
+            return es_jugador
+        return False
+
+    # BFS para obtener el camino (lista de nodos) considerando reglas de paso
+    # devuelve lista [ (sx,sy), ..., (gx,gy) ] o None si no hay camino
+    # parametro es_jugador indica quién se mueve (afecta lianas/tunel)
+    def bfs_camino(self, inicio, fin, es_jugador=True):
+        if inicio == fin:
+            return [inicio]
+        queue = deque([inicio])
+        padres = {inicio: None}
+        while queue:
+            nodo = queue.popleft()
+            if nodo == fin:
+                # reconstruir camino
+                path = []
+                cur = fin
+                while cur is not None:
+                    path.append(cur)
+                    cur = padres[cur]
+                path.reverse()
+                return path
+            x, y = nodo
+            for dx, dy in [(1,0),(0,1),(-1,0),(0,-1)]:
+                nx, ny = x+dx, y+dy
+                if 0 <= nx < self.alto and 0 <= ny < self.ancho and (nx,ny) not in padres:
+                    if self._es_transitable_numero(nx, ny, es_jugador):
+                        padres[(nx,ny)] = nodo
+                        queue.append((nx,ny))
+        return None
+
+class Entidad:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        
+    def mover(self, nx, ny):
+        self.x = nx
+        self.y = ny
+
+class Jugador(Entidad):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.energia = 100
+        self.trampas = 3
+        self.corriendo = False
+
+class Enemigo(Entidad):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.vivo = True
 
 # Clase Juego (Pygame)
 
