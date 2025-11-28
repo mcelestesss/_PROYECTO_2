@@ -8,6 +8,8 @@ import os
 # Clases de Casillas (igual)
     # varias
 # Clase Mapa (igual)
+# Clase Mapa
+# -------------------------------
 class Mapa:
     def __init__(self, ancho, alto):
         self.ancho = ancho
@@ -34,7 +36,7 @@ class Mapa:
         self.matriz[1][1] = 0
         dfs(1, 1)
         # Asegurar que la salida esté abierta
-        self.matriz[self.alto-2][self.ancho-2] = 0
+        self.matriz[self.alto - 2][self.ancho - 2] = 0
 
         self._agregar_elementos_especiales()#lianas y tuneles
 
@@ -47,6 +49,7 @@ class Mapa:
                     self.matriz[x][y] = 2  # Liana
                 else:
                     self.matriz[x][y] = 3  # Túnel
+
     # BFS para validar que existe camino al final
     def existe_camino(self, inicio, fin): #usamos el bsf sea este qu epueda transitar si es enemigo o si es jugador
         queue = deque([inicio])
@@ -63,7 +66,7 @@ class Mapa:
                         visitado.add((nx, ny))
                         queue.append((nx, ny))
         return False
-    
+
     def convertir_a_objetos(self):
         objetos = []
         for x in range(self.alto):
@@ -79,24 +82,52 @@ class Mapa:
                 elif valor == 3: 
                     fila.append(Tunel(x, y))
                 else:
+                    # Por defecto, muro si no reconoce el valor
                     fila.append(Muro(x, y))
             objetos.append(fila)
         self.objetos = objetos
         return objetos
 
+    # Aux: comprobar transitabilidad directamente desde la matriz (útil antes de convertir)
     def _es_transitable_numero(self, x, y, es_jugador=True):
         v = self.matriz[x][y]
-        if v == 0:
+        if v == 0:  # camino
             return True
-        if v == 1:
+        if v == 1:  # muro
             return False
-        if v == 2:
+        if v == 2:  # liana -> solo enemigo
             return not es_jugador
-        if v == 3:
+        if v == 3:  # tunel -> solo jugador
             return es_jugador
         return False
 
-
+    # BFS para obtener el camino (lista de nodos) considerando reglas de paso
+    # devuelve lista [ (sx,sy), ..., (gx,gy) ] o None si no hay camino
+    # parametro es_jugador indica quién se mueve (afecta lianas/tunel)
+    def bfs_camino(self, inicio, fin, es_jugador=True):
+        if inicio == fin:
+            return [inicio]
+        queue = deque([inicio])
+        padres = {inicio: None}
+        while queue:
+            nodo = queue.popleft()
+            if nodo == fin:
+                # reconstruir camino
+                path = []
+                cur = fin
+                while cur is not None:
+                    path.append(cur)
+                    cur = padres[cur]
+                path.reverse()
+                return path
+            x, y = nodo
+            for dx, dy in [(1,0),(0,1),(-1,0),(0,-1)]:
+                nx, ny = x+dx, y+dy
+                if 0 <= nx < self.alto and 0 <= ny < self.ancho and (nx,ny) not in padres:
+                    if self._es_transitable_numero(nx, ny, es_jugador):
+                        padres[(nx,ny)] = nodo
+                        queue.append((nx,ny))
+        return None
 # Clases de Entidades (igual)
 
 # Clase Juego (Pygame)
@@ -108,5 +139,3 @@ class Mapa:
 ##########################
 #ejecutar
 ##########################
-
-        
