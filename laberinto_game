@@ -12,6 +12,94 @@ import time
 # Clases de Casillas (igual)
     # varias
 # Clase Mapa (igual)
+class Mapa:
+    def __init__(self, ancho, alto):
+        self.ancho = ancho
+        self.alto = alto
+        self.matriz = [[1 for _ in range(ancho)] for _ in range(alto)]  # inicialmente muros
+        self.objetos = None
+
+    def generar_laberinto(self):
+        # Función DFS recursiva para generar el laberinto
+        def dfs(x, y):
+            direcciones = [(2, 0), (-2, 0), (0, 2), (0, -2)]
+            random.shuffle(direcciones)#IMPORTANTE EL SHUFFLE PARA RANDOMIZAR LOS MUROS Y EL LABERINTO 
+            for dx, dy in direcciones:
+                nx, ny = x + dx, y + dy
+                if 1 <= nx < self.alto - 1 and 1 <= ny < self.ancho - 1:
+                    if self.matriz[nx][ny] == 1:  # muro
+                        self.matriz[nx][ny] = 0
+                        self.matriz[x + dx // 2][y + dy // 2] = 0
+                        dfs(nx, ny)
+                        
+        # Iniciar desde una posición y generar el laberinto
+        # generar desde (1,1)
+        self.matriz = [[1 for _ in range(self.ancho)] for _ in range(self.alto)]
+        self.matriz[1][1] = 0
+        dfs(1, 1)
+        # Asegurar que la salida esté abierta
+        self.matriz[self.alto-2][self.ancho-2] = 0
+
+        self._agregar_elementos_especiales()#lianas y tuneles
+
+    def _agregar_elementos_especiales(self):
+        # Agregar algunas lianas (2) y túneles (3) aleatoriamente
+        for _ in range(self.ancho * self.alto // 20):  # Aprox 5% del mapa
+            x, y = random.randint(1, self.alto-2), random.randint(1, self.ancho-2)
+            if self.matriz[x][y] == 0:  # Solo en caminos
+                if random.random() < 0.5:
+                    self.matriz[x][y] = 2  # Liana
+                else:
+                    self.matriz[x][y] = 3  # Túnel
+    # BFS para validar que existe camino al final
+    def existe_camino(self, inicio, fin): #usamos el bsf sea este qu epueda transitar si es enemigo o si es jugador
+        queue = deque([inicio])
+        visitado = set([inicio])
+        while queue:
+            x, y = queue.popleft()
+            if (x, y) == fin: 
+                return True
+            for dx, dy in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.alto and 0 <= ny < self.ancho:
+# revisar transitabilidad en base a matriz y tipo
+                    if self.matriz[nx][ny] == 0 and (nx, ny) not in visitado:
+                        visitado.add((nx, ny))
+                        queue.append((nx, ny))
+        return False
+    
+    def convertir_a_objetos(self):
+        objetos = []
+        for x in range(self.alto):
+            fila = []
+            for y in range(self.ancho):
+                valor = self.matriz[x][y]
+                if valor == 0: 
+                    fila.append(Camino(x, y))
+                elif valor == 1: 
+                    fila.append(Muro(x, y))
+                elif valor == 2: 
+                    fila.append(Liana(x, y))
+                elif valor == 3: 
+                    fila.append(Tunel(x, y))
+                else:
+                    fila.append(Muro(x, y))
+            objetos.append(fila)
+        self.objetos = objetos
+        return objetos
+
+    def _es_transitable_numero(self, x, y, es_jugador=True):
+        v = self.matriz[x][y]
+        if v == 0:
+            return True
+        if v == 1:
+            return False
+        if v == 2:
+            return not es_jugador
+        if v == 3:
+            return es_jugador
+        return False
+
 
 # Clases de Entidades (igual)
 
