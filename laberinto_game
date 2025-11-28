@@ -488,6 +488,160 @@ class Juego:
                     self.sonido.reproducir('movimiento')
                     return True
         return False
+    
+
+    #SISTEMA DE TRAMPAS MEJORADO
+    def colocar_trampa(self):
+        """Coloca una trampa en modo ESCAPA - IMPLEMENTA TODAS LAS CONDICIONES"""
+        if not self.juego_activo or self.modo_juego != "ESCAPA":
+            return False, "Solo en modo ESCAPA"
+            
+        tiempo_actual = time.time()
+        
+        # Verificar límite de 3 trampas activas
+        if len(self.trampas) >= 3:
+            return False, "Máximo 3 trampas activas"
+            
+        # Verificar cooldown (5 segundos)
+        if tiempo_actual - self.ultima_trampa_tiempo < 5:
+            tiempo_restante = 5 - (tiempo_actual - self.ultima_trampa_tiempo)
+            return False, f"Espera {tiempo_restante:.1f}s"
+        
+        # Colocar trampa
+        nueva_trampa = Trampa(self.jugador.x, self.jugador.y)
+        self.trampas.append(nueva_trampa)
+        self.ultima_trampa_tiempo = tiempo_actual
+        self.sonido.reproducir('trampa')
+        return True, "Trampa colocada"
+
+    def verificar_trampas(self):
+        """Verifica si enemigos caen en trampas - CON BONO DE PUNTOS"""
+        trampas_a_eliminar = []
+        enemigos_a_eliminar = []
+        
+        for trampa in self.trampas:
+            for enemigo in self.enemigos:
+                if trampa.activa and trampa.x == enemigo.x and trampa.y == enemigo.y:
+                    trampas_a_eliminar.append(trampa)
+                    enemigos_a_eliminar.append(enemigo)
+                    
+                    # Bono de puntos por eliminar enemigo (25 puntos por enemigo)
+                    bonus = 25
+                    self.puntos += bonus
+                    self.enemigos_atrapados += 1
+                    self.sonido.reproducir('trampa')
+                    break
+        
+        # Eliminar trampas y enemigos atrapados
+        for trampa in trampas_a_eliminar:
+            self.trampas.remove(trampa)
+        
+        for enemigo in enemigos_a_eliminar:
+            self.enemigos.remove(enemigo)
+            # Respawn después de 10 segundos
+            self._programar_respawn(enemigo)
+        
+        return len(enemigos_a_eliminar) > 0
+
+    def _programar_respawn(self, enemigo):
+        """Programa el respawn de un enemigo después de 10 segundos"""
+        # En una implementación completa usaríamos pygame.time.set_timer()
+        # Por simplicidad, respawneamos inmediatamente en una posición aleatoria
+        self._respawn_enemigo(enemigo)
+
+    def _respawn_enemigo(self, enemigo):
+        """Respawnea un enemigo en posición aleatoria"""
+        opciones = []
+        salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
+        
+        for x in range(self.mapa.alto):
+            for y in range(self.mapa.ancho):
+                if self.mapa._es_transitable_numero(x, y, es_jugador=False):
+                    if (x, y) != (self.jugador.x, self.jugador.y) and (x, y) != salida:
+                        opciones.append((x, y))
+        
+        if opciones:
+            nueva_pos = random.choice(opciones)
+            enemigo.mover(nueva_pos[0], nueva_pos[1])
+            self.enemigos.append(enemigo)
+
+    def calcular_puntos_escape(self):
+        tiempo_fin = time.time()
+        tiempo_transcurrido = tiempo_fin - self.tiempo_inicio
+        
+        puntos_base = 1000
+        penalizacion_tiempo = int(tiempo_transcurrido * 2)
+        bonus_dificultad = self.num_enemigos * 50
+        
+        puntos_finales = max(100, puntos_base - penalizacion_tiempo + bonus_dificultad)
+        self.puntos = puntos_finales
+        
+        # Guardar puntaje
+        self.puntajes.agregar_puntaje(self.nombre_jugador, puntos_finales, "ESCAPA")
+        self.sonido.reproducir('victoria')
+        
+        return puntos_finales
+
+    def cazar_enemigo(self, enemigo):
+        self.enemigos_atrapados += 1
+        puntos_ganados = 20 * self.num_enemigos
+        self.puntos += puntos_ganados
+        
+        self.sonido.reproducir('enemigo_atrapado')
+        return puntos_ganados
+
+    def enemigo_escapa(self, enemigo):
+        self.enemigos_escapados += 1
+        puntos_perdidos = 10 * self.num_enemigos
+        self.puntos = max(0, self.puntos - puntos_perdidos)
+        return puntos_perdidos
+
+    def verificar_estado_juego(self):
+        if not self.juego_activo:
+            return "continuar", self.puntos
+            
+        salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
+        jugador_pos = (self.jugador.x, self.jugador.y)
+        
+        # MODO ESCAPA: Victoria al llegar a la salida
+        if self.modo_juego == "ESCAPA" and jugador_pos == salida:
+            puntos = self.calcular_puntos_escape()
+            self.juego_activo = False
+            return "victoria", puntos
+        
+        # MODO CAZADOR: Victoria al atrapar 10 enemigos
+        elif self.modo_juego == "CAZADOR" and self.enemigos_atrapados >= 10:
+            self.puntajes.agregar_puntaje(self.nombre_jugador, self.puntos, "CAZADOR")
+            self.sonido.reproducir('victoria')
+            self.juego_activo = False
+            return "victoria", self.puntos
+        
+        # Verificar colisiones con enemigos
+        for e in self.enemigos:
+            if (e.x, e.y) == jugador_pos:
+                if self.modo_juego == "ESCAPA":
+                    # Derrota en modo ESCAPA
+                    self.sonido.reproducir('derrota')
+                    self.juego_activo = False
+                    return "derrota", self.puntos
+                elif self.modo_juego == "CAZADOR":
+                    # Captura en modo CAZADOR
+                    self.cazar_enemigo(e)
+                    self._respawn_enemigo(e)
+                    return "continuar", self.puntos
+        
+        # En modo CAZADOR, verificar si enemigos escapan
+        if self.modo_juego == "CAZADOR":
+            for e in self.enemigos:
+                if (e.x, e.y) == salida:
+                    self.enemigo_escapa(e)
+                    self._respawn_enemigo(e)
+        
+        return "continuar", self.puntos
+
+    def actualizar_energia(self):
+        if self.juego_activo and self.jugador.energia < 100:
+            self.jugador.energia = min(100, self.jugador.energia + 0.5)
 
 
 # Clase principal de la aplicación en Pygame
