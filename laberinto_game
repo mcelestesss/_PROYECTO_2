@@ -1,35 +1,13 @@
-# Clases de Casillas (igual)
-    # varias
-# Clase Mapa (igual)
-
 import pygame
 import random
 import time
-
-# Inicialización de Pygame
-    # Constantes
-        #ANCHO_MAPA = 21
-    # Colores
-        #NEGRO = (0, 0, 0)
-
+from collections import deque
+import json
+import os
 
 # Clases de Casillas (igual)
     # varias
 # Clase Mapa (igual)
-
-# Clases de Entidades (igual)
-
-# Clase Juego (Pygame)
-
-# Clase principal de la aplicación en Pygame
-
-#lo que falta
-
-##########################
-#ejecutar
-##########################
-# Clase Mapa
-# -------------------------------
 class Mapa:
     def __init__(self, ancho, alto):
         self.ancho = ancho
@@ -57,3 +35,45 @@ class Mapa:
         dfs(1, 1)
         # Asegurar que la salida esté abierta
         self.matriz[self.alto-2][self.ancho-2] = 0
+
+        self._agregar_elementos_especiales()#lianas y tuneles
+
+    def _agregar_elementos_especiales(self):
+        # Agregar algunas lianas (2) y túneles (3) aleatoriamente
+        for _ in range(self.ancho * self.alto // 20):  # Aprox 5% del mapa
+            x, y = random.randint(1, self.alto-2), random.randint(1, self.ancho-2)
+            if self.matriz[x][y] == 0:  # Solo en caminos
+                if random.random() < 0.5:
+                    self.matriz[x][y] = 2  # Liana
+                else:
+                    self.matriz[x][y] = 3  # Túnel
+    # BFS para validar que existe camino al final
+    def existe_camino(self, inicio, fin): #usamos el bsf sea este qu epueda transitar si es enemigo o si es jugador
+        queue = deque([inicio])
+        visitado = set([inicio])
+        while queue:
+            x, y = queue.popleft()
+            if (x, y) == fin: 
+                return True
+            for dx, dy in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.alto and 0 <= ny < self.ancho:
+# revisar transitabilidad en base a matriz y tipo
+                    if self.matriz[nx][ny] == 0 and (nx, ny) not in visitado:
+                        visitado.add((nx, ny))
+                        queue.append((nx, ny))
+        return False
+
+# Clases de Entidades (igual)
+
+# Clase Juego (Pygame)
+
+# Clase principal de la aplicación en Pygame
+
+#lo que falta
+
+##########################
+#ejecutar
+##########################
+
+        
