@@ -1,1 +1,43 @@
-print ("hola")
+# Clases de Casillas (igual)
+    # varias
+# Clase Mapa (igual)
+class Mapa:
+    def __init__(self, ancho, alto):
+        self.ancho = ancho
+        self.alto = alto
+        self.matriz = [[1 for _ in range(ancho)] for _ in range(alto)]  # inicialmente muros
+        self.objetos = None
+
+    def generar_laberinto(self):
+        # Función DFS recursiva para generar el laberinto
+        def dfs(x, y):
+            direcciones = [(2, 0), (-2, 0), (0, 2), (0, -2)]
+            random.shuffle(direcciones)#IMPORTANTE EL SHUFFLE PARA RANDOMIZAR LOS MUROS Y EL LABERINTO 
+            for dx, dy in direcciones:
+                nx, ny = x + dx, y + dy
+                if 1 <= nx < self.alto - 1 and 1 <= ny < self.ancho - 1:
+                    if self.matriz[nx][ny] == 1:  # muro
+                        self.matriz[nx][ny] = 0
+                        self.matriz[x + dx // 2][y + dy // 2] = 0
+                        dfs(nx, ny)
+                        
+        # Iniciar desde una posición y generar el laberinto
+        # generar desde (1,1)
+        self.matriz = [[1 for _ in range(self.ancho)] for _ in range(self.alto)]
+        self.matriz[1][1] = 0
+        dfs(1, 1)
+        # Asegurar que la salida esté abierta
+        self.matriz[self.alto-2][self.ancho-2] = 0
+
+# Clases de Entidades (igual)
+
+# Clase Juego (Pygame)
+
+# Clase principal de la aplicación en Pygame
+
+#lo que falta
+
+##########################
+#ejecutar
+##########################
+
