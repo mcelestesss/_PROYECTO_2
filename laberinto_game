@@ -63,6 +63,39 @@ class Mapa:
                         visitado.add((nx, ny))
                         queue.append((nx, ny))
         return False
+    
+    def convertir_a_objetos(self):
+        objetos = []
+        for x in range(self.alto):
+            fila = []
+            for y in range(self.ancho):
+                valor = self.matriz[x][y]
+                if valor == 0: 
+                    fila.append(Camino(x, y))
+                elif valor == 1: 
+                    fila.append(Muro(x, y))
+                elif valor == 2: 
+                    fila.append(Liana(x, y))
+                elif valor == 3: 
+                    fila.append(Tunel(x, y))
+                else:
+                    fila.append(Muro(x, y))
+            objetos.append(fila)
+        self.objetos = objetos
+        return objetos
+
+    def _es_transitable_numero(self, x, y, es_jugador=True):
+        v = self.matriz[x][y]
+        if v == 0:
+            return True
+        if v == 1:
+            return False
+        if v == 2:
+            return not es_jugador
+        if v == 3:
+            return es_jugador
+        return False
+
 
 # Clases de Entidades (igual)
 
