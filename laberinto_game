@@ -1,15 +1,35 @@
 import pygame
 import random
 import time
-from collections import deque
+import time
 import json
 import os
+from collections import deque
 
 # Inicialización de Pygame
-    # Constantes
-        #ANCHO_MAPA = 21
-    # Colores
-        #NEGRO = (0, 0, 0)
+pygame.init()
+
+# Constantes del juego
+ANCHO_MAPA = 21
+ALTO_MAPA = 21
+TAMANO_CELDA = 30
+ANCHO_VENTANA = ANCHO_MAPA * TAMANO_CELDA
+ALTO_VENTANA = ALTO_MAPA * TAMANO_CELDA + 100
+FPS = 60
+
+# Colores
+NEGRO = (0, 0, 0)
+BLANCO = (255, 255, 255)
+GRIS = (128, 128, 128)
+VERDE_CAMINO = (46, 204, 113)
+AZUL_MURO = (52, 73, 94)
+MORADO_TUNEL = (155, 89, 182)        # Túneles: morados (solo jugador)
+AMARILLO_LIANA = (241, 196, 15)      # Lianas: amarillas (solo enemigos)
+ROJO_JUGADOR = (231, 76, 60)
+AZUL_ENEMIGO = (52, 152, 219)
+VERDE_ENERGIA = (39, 174, 96)
+ROJO_ENERGIA = (192, 57, 43)
+NARANJA_TRAMPA = (230, 126, 34)     #Trampa
 
 
 # Clases de Casillas (igual)
@@ -36,6 +56,9 @@ class Tunel(Casilla):
     def transitable_por_jugador(self): return True
     def transitable_por_enemigo(self): return False
 
+
+# Clase Mapa
+# -------------------------------
 class Mapa:
     def __init__(self, ancho, alto):
         self.ancho = ancho
@@ -62,7 +85,7 @@ class Mapa:
         self.matriz[1][1] = 0
         dfs(1, 1)
         # Asegurar que la salida esté abierta
-        self.matriz[self.alto-2][self.ancho-2] = 0
+        self.matriz[self.alto - 2][self.ancho - 2] = 0
 
         self._agregar_elementos_especiales()#lianas y tuneles
 
@@ -75,6 +98,7 @@ class Mapa:
                     self.matriz[x][y] = 2  # Liana
                 else:
                     self.matriz[x][y] = 3  # Túnel
+
     # BFS para validar que existe camino al final
     def existe_camino(self, inicio, fin): #usamos el bsf sea este qu epueda transitar si es enemigo o si es jugador
         queue = deque([inicio])
@@ -91,64 +115,6 @@ class Mapa:
                         visitado.add((nx, ny))
                         queue.append((nx, ny))
         return False
-    
-    def convertir_a_objetos(self):
-        objetos = []
-        for x in range(self.alto):
-            fila = []
-            for y in range(self.ancho):
-                valor = self.matriz[x][y]
-                if valor == 0: 
-                    fila.append(Camino(x, y))
-                elif valor == 1: 
-                    fila.append(Muro(x, y))
-                elif valor == 2: 
-                    fila.append(Liana(x, y))
-                elif valor == 3: 
-                    fila.append(Tunel(x, y))
-                else:
-                    fila.append(Muro(x, y))
-            objetos.append(fila)
-        self.objetos = objetos
-        return objetos
-
-    def _es_transitable_numero(self, x, y, es_jugador=True):
-        v = self.matriz[x][y]
-        if v == 0:
-            return True
-        if v == 1:
-            return False
-        if v == 2:
-            return not es_jugador
-        if v == 3:
-            return es_jugador
-        return False
-    
-
-    def bfs_camino(self, inicio, fin, es_jugador=True):
-        if inicio == fin:
-            return [inicio]
-        queue = deque([inicio])
-        padres = {inicio: None}
-        while queue:
-            nodo = queue.popleft()
-            if nodo == fin:
-                path = []
-                cur = fin
-                while cur is not None:
-                    path.append(cur)
-                    cur = padres[cur]
-                path.reverse()
-                return path
-            x, y = nodo
-            for dx, dy in [(1,0),(0,1),(-1,0),(0,-1)]:
-                nx, ny = x+dx, y+dy
-                if 0 <= nx < self.alto and 0 <= ny < self.ancho and (nx,ny) not in padres:
-                    if self._es_transitable_numero(nx, ny, es_jugador):
-                        padres[(nx,ny)] = nodo
-                        queue.append((nx,ny))
-        return None
-    
 
     def convertir_a_objetos(self):
         objetos = []
@@ -183,35 +149,9 @@ class Mapa:
         if v == 3:  # tunel -> solo jugador
             return es_jugador
         return False
+    
 
-    # BFS para obtener el camino (lista de nodos) considerando reglas de paso
-    # devuelve lista [ (sx,sy), ..., (gx,gy) ] o None si no hay camino
-    # parametro es_jugador indica quién se mueve (afecta lianas/tunel)
-    def bfs_camino(self, inicio, fin, es_jugador=True):
-        if inicio == fin:
-            return [inicio]
-        queue = deque([inicio])
-        padres = {inicio: None}
-        while queue:
-            nodo = queue.popleft()
-            if nodo == fin:
-                # reconstruir camino
-                path = []
-                cur = fin
-                while cur is not None:
-                    path.append(cur)
-                    cur = padres[cur]
-                path.reverse()
-                return path
-            x, y = nodo
-            for dx, dy in [(1,0),(0,1),(-1,0),(0,-1)]:
-                nx, ny = x+dx, y+dy
-                if 0 <= nx < self.alto and 0 <= ny < self.ancho and (nx,ny) not in padres:
-                    if self._es_transitable_numero(nx, ny, es_jugador):
-                        padres[(nx,ny)] = nodo
-                        queue.append((nx,ny))
-        return None
-
+# Clases de Entidades (igual)
 class Entidad:
     def __init__(self, x, y):
         self.x = x
@@ -233,6 +173,82 @@ class Enemigo(Entidad):
         super().__init__(x, y)
         self.vivo = True
 
+class Trampa:
+    def _init_(self, x, y):
+        self.x = x
+        self.y = y
+        self.tiempo_colocacion = time.time()
+        self.activa = True
+        self.tiempo_activacion = time.time()
+
+    def verificar_tiempo_vida(self): 
+        return time.time() - self.tiempo_activacion < 10    #duración trampa 10
+
+    
+
+
+
+
+
+
+
+
+
+
+# ================== SISTEMA DE PUNTAJES ==================
+
+class SistemaPuntajes:
+    def __init__(self, archivo="puntajes.json"):
+        self.archivo = archivo
+        self.puntajes_escape = []
+        self.puntajes_cazador = []
+        self.cargar_puntajes()
+    
+    def cargar_puntajes(self):
+        try:
+            if os.path.exists(self.archivo):
+                with open(self.archivo, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+                    self.puntajes_escape = datos.get('escape', [])
+                    self.puntajes_cazador = datos.get('cazador', [])
+        except:
+            self.puntajes_escape = []
+            self.puntajes_cazador = []
+    
+    def guardar_puntajes(self):
+        try:
+            with open(self.archivo, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'escape': self.puntajes_escape,
+                    'cazador': self.puntajes_cazador
+                }, f, indent=2, ensure_ascii=False)
+        except:
+            pass
+    
+    def agregar_puntaje(self, nombre, puntos, modo):
+        if not nombre or not nombre.strip():
+            nombre = "Jugador"
+        
+        nuevo_puntaje = {
+            'nombre': nombre.strip(),
+            'puntos': int(puntos),
+            'fecha': time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        if modo == "ESCAPA":
+            self.puntajes_escape.append(nuevo_puntaje)
+            self.puntajes_escape.sort(key=lambda x: x['puntos'], reverse=True)
+            self.puntajes_escape = self.puntajes_escape[:5]
+        else:
+            self.puntajes_cazador.append(nuevo_puntaje)
+            self.puntajes_cazador.sort(key=lambda x: x['puntos'], reverse=True)
+            self.puntajes_cazador = self.puntajes_cazador[:5]
+        
+        self.guardar_puntajes()
+        return nuevo_puntaje
+    
+    def obtener_top_5(self, modo):
+        return self.puntajes_escape if modo == "ESCAPA" else self.puntajes_cazador
 # Clase Juego (Pygame)
 
 # Clase principal de la aplicación en Pygame
