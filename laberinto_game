@@ -4,6 +4,7 @@ import time
 import json
 import os
 from collections import deque
+import math
 
 # Inicialización de Pygame
 pygame.init()
@@ -183,6 +184,115 @@ class Trampa:
     def verificar_tiempo_vida(self): 
         return time.time() - self.tiempo_activacion < 10    #duración trampa 10
  
+
+
+# ================== SISTEMA DE SONIDO ==================
+class SistemaSonido:
+    def _init_(self):
+        try:
+            pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+            self.sonidos = {}
+            self.cargar_sonidos()
+        except Exception as e:
+            print(f"No se pudo inicializar el sistema de sonido - {e}")
+            self.sonidos = None
+    
+    def cargar_sonidos(self):   #conecta a carpeta sonidos
+        try:
+            archivos_sonidos = {
+                'inicio': 'inicio.wav',
+                'movimiento': 'movimiento.wav', 
+                'trampa': 'trampa.wav',
+                'victoria': 'victoria.wav',
+                'derrota': 'derrota.wav',
+                'enemigo_atrapado': 'enemigo_atrapado.wav',
+                'menu': 'menu.wav'
+            }
+            for nombre, archivo in archivos_sonidos.items():
+                ruta = os.path.join('sonidos', archivo)
+                if os.path.exists(ruta):
+                    self.sonidos[nombre] = pygame.mixer.Sound(ruta)
+                    print(f"Sonido cargado: {archivo}")
+                else:           # exception
+                    print(f"Archivo no encontrado: {ruta}, creando sonido temporal")
+                    self.crear_sonido_temporal(nombre)                
+        except Exception as e:
+            print(f"Error cargando sonidos: {e}")       # Crea sonidos temporales si hay error
+            self.crear_sonidos_temporales()
+    
+    def crear_sonido_temporal(self, nombre):
+        """Crea un sonido simple temporal si no existe el archivo"""
+        frecuencias = {
+            'inicio': 523,      # Do
+            'movimiento': 262,  # Do bajo
+            'trampa': 330,      # Mi
+            'victoria': 784,    # Sol
+            'derrota': 196,     # Sol bajo
+            'enemigo_atrapado': 392,  # Sol
+            'menu': 440         # La
+        }
+        
+        duraciones = {
+            'inicio': 1000,
+            'movimiento': 100,
+            'trampa': 500, 
+            'victoria': 1500,
+            'derrota': 1000,
+            'enemigo_atrapado': 300,
+            'menu': 2000
+        }
+        
+        freq = frecuencias.get(nombre, 440)
+        duration = duraciones.get(nombre, 500)
+        self.sonidos[nombre] = self.crear_sonido_simple(freq, duration)
+    
+    def crear_sonidos_temporales(self):
+        self.sonidos = {
+            'inicio': self.crear_sonido_simple(523, 1000),
+            'movimiento': self.crear_sonido_simple(262, 100),
+            'trampa': self.crear_sonido_simple(330, 500),
+            'victoria': self.crear_sonido_simple(784, 1500),
+            'derrota': self.crear_sonido_simple(196, 1000),
+            'enemigo_atrapado': self.crear_sonido_simple(392, 300),
+            'menu': self.crear_sonido_simple(440, 2000)
+        }
+    
+    def crear_sonido_simple(self, frecuencia, duracion):
+        try:
+            sample_rate = 22050     #sonido basico con pygame
+            frames = int(duracion * sample_rate / 1000.0)
+            sound_bytes = bytearray()   #hacemso un arreglo o lista de bytes para le sonido como cuando ussbamos bitarray y esoss cods
+            for i in range(frames):
+                t = float(i) / sample_rate #hacemso uan onda simple para porbar
+                val = int(127 + 127 * math.sin(2.0 * math.pi * frecuencia * t))
+                sound_bytes.append(val)
+            return pygame.mixer.Sound(bytes(sound_bytes))   #aca convertimos a sonido de pygame
+        except Exception as e:
+            print(f"Error creando sonido temporal: {e}")        # Si falla
+            return pygame.mixer.Sound(buffer=bytes([128]*1000))
+    
+    def reproducir(self, nombre, volumen=1.0):
+        if self.sonidos and nombre in self.sonidos:
+            try:
+                self.sonidos[nombre].set_volume(volumen)
+                self.sonidos[nombre].play()
+            except Exception as e:
+                print(f"Error reproduciendo {nombre}: {e}")
+    
+    def detener(self, nombre):
+        if self.sonidos and nombre in self.sonidos:
+            try:
+                self.sonidos[nombre].stop()
+            except:
+                pass
+            
+    def detener_todo(self):
+        try:
+            pygame.mixer.stop()
+        except:
+            pass
+
+
  #================== SISTEMA DE PUNTAJES ==============
 class SistemaPuntajes:
     def __init__(self, archivo="puntajes.json"):
