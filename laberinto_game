@@ -1,7 +1,6 @@
 import pygame
 import random
 import time
-import time
 import json
 import os
 from collections import deque
@@ -183,20 +182,8 @@ class Trampa:
 
     def verificar_tiempo_vida(self): 
         return time.time() - self.tiempo_activacion < 10    #duración trampa 10
-
-    
-
-
-
-
-
-
-
-
-
-
-# ================== SISTEMA DE PUNTAJES ==================
-
+ 
+ #================== SISTEMA DE PUNTAJES ==============
 class SistemaPuntajes:
     def __init__(self, archivo="puntajes.json"):
         self.archivo = archivo
@@ -249,6 +236,9 @@ class SistemaPuntajes:
     
     def obtener_top_5(self, modo):
         return self.puntajes_escape if modo == "ESCAPA" else self.puntajes_cazador
+
+    
+
 # Clase Juego (Pygame)
 
 # Clase principal de la aplicación en Pygame
