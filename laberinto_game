@@ -1,6 +1,21 @@
 # Clases de Casillas (igual)
     # varias
 # Clase Mapa (igual)
+import pygame
+import random
+import time
+
+# Inicialización de Pygame
+    # Constantes
+        #ANCHO_MAPA = 21
+    # Colores
+        #NEGRO = (0, 0, 0)
+
+
+# Clases de Casillas (igual)
+    # varias
+
+# Clase Mapa (igual)
 class Mapa:
     def __init__(self, ancho, alto):
         self.ancho = ancho
@@ -40,4 +55,3 @@ class Mapa:
 ##########################
 #ejecutar
 ##########################
-
