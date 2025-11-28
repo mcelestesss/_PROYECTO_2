@@ -395,10 +395,7 @@ class Juego:
         self.tiempo_inicio = time.time()
         self.ultimo_movimiento_enemigos = pygame.time.get_ticks()
 
-
         self.sonido.reproducir('inicio', volumen=0.7)
-
-
         
         inicio = (1, 1)
         salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
@@ -599,7 +596,6 @@ class Juego:
     def verificar_estado_juego(self):
         if not self.juego_activo:
             return "continuar", self.puntos
-            
         salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
         jugador_pos = (self.jugador.x, self.jugador.y)
         
@@ -636,7 +632,6 @@ class Juego:
                 if (e.x, e.y) == salida:
                     self.enemigo_escapa(e)
                     self._respawn_enemigo(e)
-        
         return "continuar", self.puntos
 
     def actualizar_energia(self):
@@ -644,9 +639,58 @@ class Juego:
             self.jugador.energia = min(100, self.jugador.energia + 0.5)
 
 
+
+# ================== INTERFAZ DE USUARIO ==================
+class VentanaPuntajes:
+    def _init_(self, pantalla, sistema_puntajes):
+        self.pantalla = pantalla
+        self.sistema_puntajes = sistema_puntajes
+        self.font = pygame.font.Font(None, 36)
+        self.font_chica = pygame.font.Font(None, 24)
+        self.corriendo = True
+    
+    def ejecutar(self):
+        while self.corriendo:
+            for evento in pygame.event.get():
+                if evento.type == pygame.QUIT:
+                    self.corriendo = False
+                elif evento.type == pygame.KEYDOWN:
+                    if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_RETURN:
+                        self.corriendo = False
+                elif evento.type == pygame.MOUSEBUTTONDOWN:
+                    self.corriendo = False
+            self.dibujar()
+            pygame.display.flip()
+    
+    def dibujar(self):
+        self.pantalla.fill(NEGRO)
+        
+        titulo = self.font.render("TOP 5 PUNTAJES", True, BLANCO)
+        self.pantalla.blit(titulo, (ANCHO_VENTANA//2 - titulo.get_width()//2, 50))
+        
+        escape_titulo = self.font_chica.render("MODO ESCAPA", True, VERDE_CAMINO)
+        self.pantalla.blit(escape_titulo, (100, 120))
+        
+        escape_puntajes = self.sistema_puntajes.obtener_top_5("ESCAPA")
+        for i, puntaje in enumerate(escape_puntajes):
+            texto = f"{i+1}. {puntaje['nombre']}: {puntaje['puntos']} pts"
+            texto_surface = self.font_chica.render(texto, True, BLANCO)
+            self.pantalla.blit(texto_surface, (100, 160 + i * 30))
+        
+        cazador_titulo = self.font_chica.render("MODO CAZADOR", True, ROJO_JUGADOR)
+        self.pantalla.blit(cazador_titulo, (400, 120))
+        
+        cazador_puntajes = self.sistema_puntajes.obtener_top_5("CAZADOR")
+        for i, puntaje in enumerate(cazador_puntajes):
+            texto = f"{i+1}. {puntaje['nombre']}: {puntaje['puntos']} pts"
+            texto_surface = self.font_chica.render(texto, True, BLANCO)
+            self.pantalla.blit(texto_surface, (400, 160 + i * 30))
+        
+        instrucciones = self.font_chica.render("Presiona ESC, ENTER o haz clic para volver", True, BLANCO)
+        self.pantalla.blit(instrucciones, (ANCHO_VENTANA//2 - instrucciones.get_width()//2, 350))
+
 # Clase principal de la aplicación en Pygame
 
-#lo que falta
 
 ##########################
 #ejecutar
