@@ -350,6 +350,145 @@ class SistemaPuntajes:
     
 
 # Clase Juego (Pygame)
+class Juego:
+    def __init__(self, ancho=ANCHO_MAPA, alto=ALTO_MAPA, num_enemigos=3):
+        self.mapa = Mapa(ancho, alto)
+        self.jugador = None
+        self.enemigos = []
+        self.trampas = []
+        self.nombre_jugador = ""
+        self.modo_juego = ""
+        self.num_enemigos = num_enemigos
+        
+        # Sistema de puntuación
+        self.puntos = 0
+        self.tiempo_inicio = 0
+        self.enemigos_atrapados = 0
+        self.enemigos_escapados = 0
+        self.ultima_trampa_tiempo = 0
+        
+        # Sistemas
+        self.sonido = SistemaSonido()
+        self.puntajes = SistemaPuntajes()
+        self.juego_activo = False
+        
+        # Control de tiempo para enemigos
+        self.ultimo_movimiento_enemigos = 0
+        self.intervalo_movimiento = 500  # ms
+
+    def reiniciar_estado(self):
+        self.puntos = 0
+        self.tiempo_inicio = 0
+        self.enemigos_atrapados = 0
+        self.enemigos_escapados = 0
+        self.ultima_trampa_tiempo = 0
+        self.trampas = []
+        self.juego_activo = False
+        self.ultimo_movimiento_enemigos = 0
+
+    def iniciar(self, nombre, modo):
+        self.reiniciar_estado()
+        
+        self.nombre_jugador = nombre.strip() if nombre.strip() else "Jugador"
+        self.modo_juego = modo
+        self.juego_activo = True
+        self.tiempo_inicio = time.time()
+        self.ultimo_movimiento_enemigos = pygame.time.get_ticks()
+
+
+        self.sonido.reproducir('inicio', volumen=0.7)
+
+
+        
+        inicio = (1, 1)
+        salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
+        
+        # Generar laberinto válido
+        self.mapa.generar_laberinto()
+        while not self.mapa.existe_camino(inicio, salida):
+            self.mapa.generar_laberinto()
+
+        self.mapa.convertir_a_objetos()
+        self.jugador = Jugador(*inicio)
+
+        # Generar enemigos
+        self.enemigos = []
+        posibles = []
+        for x in range(self.mapa.alto):
+            for y in range(self.mapa.ancho):
+                if self.mapa._es_transitable_numero(x, y, es_jugador=False):
+                    if abs(x - inicio[0]) + abs(y - inicio[1]) > 6 and (x,y) != salida:
+                        posibles.append((x,y))
+        random.shuffle(posibles)
+        
+        i = 0
+        while len(self.enemigos) < self.num_enemigos and i < len(posibles):
+            pos = posibles[i]
+            self.enemigos.append(Enemigo(*pos))
+            i += 1
+            
+        if len(self.enemigos) == 0:
+            self.enemigos.append(Enemigo(*salida))
+
+    def actualizar_enemigos(self):
+        if not self.juego_activo:
+            return
+            
+        jugador_pos = (self.jugador.x, self.jugador.y)
+        salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
+
+        for enemigo in self.enemigos:
+            if (enemigo.x, enemigo.y) == jugador_pos:
+                continue
+
+            if self.modo_juego == "ESCAPA":
+                # Enemigos persiguen al jugador
+                inicio = (enemigo.x, enemigo.y)
+                path = self.mapa.bfs_camino(inicio, jugador_pos, es_jugador=False)
+                if path and len(path) >= 2:
+                    siguiente = path[1]
+                    enemigo.mover(*siguiente)
+                else:
+                    self._mover_enemigo_aleatorio(enemigo)
+            else:
+                # Enemigos huyen hacia la salida
+                inicio = (enemigo.x, enemigo.y)
+                path = self.mapa.bfs_camino(inicio, salida, es_jugador=False)
+                if path and len(path) >= 2:
+                    siguiente = path[1]
+                    enemigo.mover(*siguiente)
+                else:
+                    self._mover_enemigo_aleatorio(enemigo)
+
+    def _mover_enemigo_aleatorio(self, enemigo):
+        opciones = []
+        for dx, dy in [(1,0),(0,1),(-1,0),(0,-1)]:
+            nx, ny = enemigo.x + dx, enemigo.y + dy
+            if 0 <= nx < self.mapa.alto and 0 <= ny < self.mapa.ancho:
+                if self.mapa._es_transitable_numero(nx, ny, es_jugador=False):
+                    opciones.append((nx, ny))
+        if opciones:
+            enemigo.mover(*random.choice(opciones))
+
+    def mover_jugador(self, dx, dy):
+        if not self.juego_activo:
+            return False
+            
+        nx = self.jugador.x + dx
+        ny = self.jugador.y + dy
+        
+        if 0 <= nx < self.mapa.alto and 0 <= ny < self.mapa.ancho:
+            casilla = self.mapa.objetos[nx][ny]
+            if casilla.transitable_por_jugador():
+                # Consumo de energía
+                costo_energia = 2 if self.jugador.corriendo else 1
+                if self.jugador.energia >= costo_energia:
+                    self.jugador.energia -= costo_energia
+                    self.jugador.mover(nx, ny)
+                    self.sonido.reproducir('movimiento')
+                    return True
+        return False
+
 
 # Clase principal de la aplicación en Pygame
 
