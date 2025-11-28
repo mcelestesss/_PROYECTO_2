@@ -3,17 +3,29 @@ import random
 import time
 
 # Inicialización de Pygame
-    # Constantes
-        #ANCHO_MAPA = 21
-    # Colores
-        #NEGRO = (0, 0, 0)
+pygame.init()
 
+# Constantes del juego
+ANCHO_MAPA = 21
+ALTO_MAPA = 21
+TAMANO_CELDA = 30
+ANCHO_VENTANA = ANCHO_MAPA * TAMANO_CELDA
+ALTO_VENTANA = ALTO_MAPA * TAMANO_CELDA + 100
+FPS = 60
 
-# Inicialización de Pygame
-    # Constantes
-        #ANCHO_MAPA = 21
-    # Colores
-        #NEGRO = (0, 0, 0)
+# Colores
+NEGRO = (0, 0, 0)
+BLANCO = (255, 255, 255)
+GRIS = (128, 128, 128)
+VERDE_CAMINO = (46, 204, 113)
+AZUL_MURO = (52, 73, 94)
+MORADO_TUNEL = (155, 89, 182)        # Túneles: morados (solo jugador)
+AMARILLO_LIANA = (241, 196, 15)      # Lianas: amarillas (solo enemigos)
+ROJO_JUGADOR = (231, 76, 60)
+AZUL_ENEMIGO = (52, 152, 219)
+VERDE_ENERGIA = (39, 174, 96)
+ROJO_ENERGIA = (192, 57, 43)
+NARANJA_TRAMPA = (230, 126, 34)     #Trampa
 
 
 # Clases de Casillas (igual)
@@ -156,6 +168,19 @@ class Enemigo(Entidad):
     def __init__(self, x, y):
         super().__init__(x, y)
         self.vivo = True
+
+class Trampa:
+    def _init_(self, x, y):
+        self.x = x
+        self.y = y
+        self.tiempo_colocacion = time.time()
+        self.activa = True
+        self.tiempo_activacion = time.time()
+
+    def verificar_tiempo_vida(self): 
+        return time.time() - self.tiempo_activacion < 10    #duración trampa 10
+
+    
 
 # Clase Juego (Pygame)
 
