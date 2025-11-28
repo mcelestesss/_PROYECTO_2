@@ -6,8 +6,30 @@ import json
 import os
 
 # Clases de Casillas (igual)
-    # varias
-# Clase Mapa (igual)
+class Casilla:
+    def _init_(self, x, y):
+        self.x = x
+        self.y = y
+    def transitable_por_jugador(self): return False
+    def transitable_por_enemigo(self): return False
+
+class Camino(Casilla):
+    def transitable_por_jugador(self): return True
+    def transitable_por_enemigo(self): return True
+
+class Muro(Casilla):
+    def transitable_por_jugador(self): return False
+    def transitable_por_enemigo(self): return False
+
+class Liana(Casilla):
+    def transitable_por_jugador(self): return False
+    def transitable_por_enemigo(self): return True
+
+class Tunel(Casilla):
+    def transitable_por_jugador(self): return True
+    def transitable_por_enemigo(self): return False
+
+
 # Clase Mapa
 # -------------------------------
 class Mapa:
