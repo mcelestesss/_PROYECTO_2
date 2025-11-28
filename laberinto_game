@@ -63,6 +63,63 @@ class Mapa:
                         visitado.add((nx, ny))
                         queue.append((nx, ny))
         return False
+    
+    def convertir_a_objetos(self):
+        objetos = []
+        for x in range(self.alto):
+            fila = []
+            for y in range(self.ancho):
+                valor = self.matriz[x][y]
+                if valor == 0: 
+                    fila.append(Camino(x, y))
+                elif valor == 1: 
+                    fila.append(Muro(x, y))
+                elif valor == 2: 
+                    fila.append(Liana(x, y))
+                elif valor == 3: 
+                    fila.append(Tunel(x, y))
+                else:
+                    fila.append(Muro(x, y))
+            objetos.append(fila)
+        self.objetos = objetos
+        return objetos
+
+    def _es_transitable_numero(self, x, y, es_jugador=True):
+        v = self.matriz[x][y]
+        if v == 0:
+            return True
+        if v == 1:
+            return False
+        if v == 2:
+            return not es_jugador
+        if v == 3:
+            return es_jugador
+        return False
+    
+
+    def bfs_camino(self, inicio, fin, es_jugador=True):
+        if inicio == fin:
+            return [inicio]
+        queue = deque([inicio])
+        padres = {inicio: None}
+        while queue:
+            nodo = queue.popleft()
+            if nodo == fin:
+                path = []
+                cur = fin
+                while cur is not None:
+                    path.append(cur)
+                    cur = padres[cur]
+                path.reverse()
+                return path
+            x, y = nodo
+            for dx, dy in [(1,0),(0,1),(-1,0),(0,-1)]:
+                nx, ny = x+dx, y+dy
+                if 0 <= nx < self.alto and 0 <= ny < self.ancho and (nx,ny) not in padres:
+                    if self._es_transitable_numero(nx, ny, es_jugador):
+                        padres[(nx,ny)] = nodo
+                        queue.append((nx,ny))
+        return None
 
 # Clases de Entidades (igual)
 
