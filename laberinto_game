@@ -4,9 +4,9 @@ import time
 import json
 import os
 from collections import deque
-import math
+import math#usmaso el math para el isstema d esonidos
 
-# Inicialización de Pygame
+# ================== INICIALIZACIÓN ==================
 pygame.init()
 
 # Constantes del juego
@@ -17,7 +17,7 @@ ANCHO_VENTANA = ANCHO_MAPA * TAMANO_CELDA
 ALTO_VENTANA = ALTO_MAPA * TAMANO_CELDA + 100
 FPS = 60
 
-# Colores
+# Colores CORREGIDOS según tu descripción
 NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 GRIS = (128, 128, 128)
@@ -29,78 +29,84 @@ ROJO_JUGADOR = (231, 76, 60)
 AZUL_ENEMIGO = (52, 152, 219)
 VERDE_ENERGIA = (39, 174, 96)
 ROJO_ENERGIA = (192, 57, 43)
-NARANJA_TRAMPA = (230, 126, 34)     #Trampa
+NARANJA_TRAMPA = (230, 126, 34)      # Color para trampas
 
+# ================== CLASES BÁSICAS ==================
 
-# Clases de Casillas (igual)
 class Casilla:
-    def _init_(self, x, y):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-    def transitable_por_jugador(self): return False
-    def transitable_por_enemigo(self): return False
+        
+    def transitable_por_jugador(self): 
+        return False
+        
+    def transitable_por_enemigo(self): 
+        return False
 
 class Camino(Casilla):
-    def transitable_por_jugador(self): return True
-    def transitable_por_enemigo(self): return True
+    def transitable_por_jugador(self): 
+        return True
+        
+    def transitable_por_enemigo(self): 
+        return True
 
 class Muro(Casilla):
-    def transitable_por_jugador(self): return False
-    def transitable_por_enemigo(self): return False
+    def transitable_por_jugador(self): 
+        return False
+        
+    def transitable_por_enemigo(self): 
+        return False
 
 class Liana(Casilla):
-    def transitable_por_jugador(self): return False
-    def transitable_por_enemigo(self): return True
+    def transitable_por_jugador(self): 
+        return False
+        
+    def transitable_por_enemigo(self): 
+        return True
 
 class Tunel(Casilla):
-    def transitable_por_jugador(self): return True
-    def transitable_por_enemigo(self): return False
+    def transitable_por_jugador(self): 
+        return True
+        
+    def transitable_por_enemigo(self): 
+        return False
 
-
-# Clase Mapa
-# -------------------------------
 class Mapa:
     def __init__(self, ancho, alto):
         self.ancho = ancho
         self.alto = alto
-        self.matriz = [[1 for _ in range(ancho)] for _ in range(alto)]  # inicialmente muros
+        self.matriz = [[1 for _ in range(ancho)] for _ in range(alto)]
         self.objetos = None
 
     def generar_laberinto(self):
-        # Función DFS recursiva para generar el laberinto
         def dfs(x, y):
             direcciones = [(2, 0), (-2, 0), (0, 2), (0, -2)]
-            random.shuffle(direcciones)#IMPORTANTE EL SHUFFLE PARA RANDOMIZAR LOS MUROS Y EL LABERINTO 
+            random.shuffle(direcciones)
             for dx, dy in direcciones:
                 nx, ny = x + dx, y + dy
                 if 1 <= nx < self.alto - 1 and 1 <= ny < self.ancho - 1:
-                    if self.matriz[nx][ny] == 1:  # muro
+                    if self.matriz[nx][ny] == 1:
                         self.matriz[nx][ny] = 0
                         self.matriz[x + dx // 2][y + dy // 2] = 0
                         dfs(nx, ny)
                         
-        # Iniciar desde una posición y generar el laberinto
-        # generar desde (1,1)
         self.matriz = [[1 for _ in range(self.ancho)] for _ in range(self.alto)]
         self.matriz[1][1] = 0
         dfs(1, 1)
-        # Asegurar que la salida esté abierta
         self.matriz[self.alto - 2][self.ancho - 2] = 0
-
-        self._agregar_elementos_especiales()#lianas y tuneles
+        self._agregar_elementos_especiales()
 
     def _agregar_elementos_especiales(self):
-        # Agregar algunas lianas (2) y túneles (3) aleatoriamente
-        for _ in range(self.ancho * self.alto // 20):  # Aprox 5% del mapa
+        for _ in range(self.ancho * self.alto // 20):
             x, y = random.randint(1, self.alto-2), random.randint(1, self.ancho-2)
-            if self.matriz[x][y] == 0:  # Solo en caminos
+            if self.matriz[x][y] == 0:
                 if random.random() < 0.5:
                     self.matriz[x][y] = 2  # Liana
                 else:
                     self.matriz[x][y] = 3  # Túnel
 
-    # BFS para validar que existe camino al final
-    def existe_camino(self, inicio, fin): #usamos el bsf sea este qu epueda transitar si es enemigo o si es jugador
+    def existe_camino(self, inicio, fin):
         queue = deque([inicio])
         visitado = set([inicio])
         while queue:
@@ -110,7 +116,6 @@ class Mapa:
             for dx, dy in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < self.alto and 0 <= ny < self.ancho:
-# revisar transitabilidad en base a matriz y tipo
                     if self.matriz[nx][ny] == 0 and (nx, ny) not in visitado:
                         visitado.add((nx, ny))
                         queue.append((nx, ny))
@@ -127,31 +132,51 @@ class Mapa:
                 elif valor == 1: 
                     fila.append(Muro(x, y))
                 elif valor == 2: 
-                    fila.append(Liana(x, y))
+                    fila.append(Liana(x, y))  # Lianas = amarillas
                 elif valor == 3: 
-                    fila.append(Tunel(x, y))
+                    fila.append(Tunel(x, y))  # Túneles = morados
                 else:
-                    # Por defecto, muro si no reconoce el valor
                     fila.append(Muro(x, y))
             objetos.append(fila)
         self.objetos = objetos
         return objetos
 
-    # Aux: comprobar transitabilidad directamente desde la matriz (útil antes de convertir)
     def _es_transitable_numero(self, x, y, es_jugador=True):
         v = self.matriz[x][y]
-        if v == 0:  # camino
+        if v == 0:  # Camino
             return True
-        if v == 1:  # muro
+        if v == 1:  # Muro
             return False
-        if v == 2:  # liana -> solo enemigo
+        if v == 2:  # Liana -> solo enemigo
             return not es_jugador
-        if v == 3:  # tunel -> solo jugador
+        if v == 3:  # Túnel -> solo jugador
             return es_jugador
         return False
-    
 
-# Clases de Entidades (igual)
+    def bfs_camino(self, inicio, fin, es_jugador=True):
+        if inicio == fin:
+            return [inicio]
+        queue = deque([inicio])
+        padres = {inicio: None}
+        while queue:
+            nodo = queue.popleft()
+            if nodo == fin:
+                path = []
+                cur = fin
+                while cur is not None:
+                    path.append(cur)
+                    cur = padres[cur]
+                path.reverse()
+                return path
+            x, y = nodo
+            for dx, dy in [(1,0),(0,1),(-1,0),(0,-1)]:
+                nx, ny = x+dx, y+dy
+                if 0 <= nx < self.alto and 0 <= ny < self.ancho and (nx,ny) not in padres:
+                    if self._es_transitable_numero(nx, ny, es_jugador):
+                        padres[(nx,ny)] = nodo
+                        queue.append((nx,ny))
+        return None
+
 class Entidad:
     def __init__(self, x, y):
         self.x = x
@@ -173,32 +198,36 @@ class Enemigo(Entidad):
         super().__init__(x, y)
         self.vivo = True
 
+# ================== CLASE TRAMPA MEJORADA ==================
+
 class Trampa:
-    def _init_(self, x, y):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
         self.tiempo_colocacion = time.time()
         self.activa = True
         self.tiempo_activacion = time.time()
 
-    def verificar_tiempo_vida(self): 
-        return time.time() - self.tiempo_activacion < 10    #duración trampa 10
- 
-
+    def verificar_tiempo_vida(self):
+        """Verifica si la trampa ha estado activa por más de 30 segundos"""
+        return time.time() - self.tiempo_activacion < 30
 
 # ================== SISTEMA DE SONIDO ==================
+
 class SistemaSonido:
-    def _init_(self):
+    def __init__(self):
         try:
             pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
             self.sonidos = {}
             self.cargar_sonidos()
         except Exception as e:
-            print(f"No se pudo inicializar el sistema de sonido - {e}")
+            print(f"Advertencia: No se pudo inicializar el sistema de sonido - {e}")
             self.sonidos = None
     
-    def cargar_sonidos(self):   #conecta a carpeta sonidos
+    def cargar_sonidos(self):
+        """Carga archivos de sonido reales desde la carpeta 'sonidos'"""
         try:
+            # Diccionario de sonidos a cargar
             archivos_sonidos = {
                 'inicio': 'inicio.wav',
                 'movimiento': 'movimiento.wav', 
@@ -208,16 +237,20 @@ class SistemaSonido:
                 'enemigo_atrapado': 'enemigo_atrapado.wav',
                 'menu': 'menu.wav'
             }
+            
             for nombre, archivo in archivos_sonidos.items():
                 ruta = os.path.join('sonidos', archivo)
                 if os.path.exists(ruta):
                     self.sonidos[nombre] = pygame.mixer.Sound(ruta)
-                    print(f"Sonido cargado: {archivo}")
-                else:           # exception
-                    print(f"Archivo no encontrado: {ruta}, creando sonido temporal")
-                    self.crear_sonido_temporal(nombre)                
+                    print(f" Sonido cargado: {archivo}")
+                else:
+                    # Si no existe el archivo, crea un sonido temporal
+                    print(f"  Archivo no encontrado: {ruta}, creando sonido temporal")
+                    self.crear_sonido_temporal(nombre)
+                    
         except Exception as e:
-            print(f"Error cargando sonidos: {e}")       # Crea sonidos temporales si hay error
+            print(f"Error cargando sonidos: {e}")
+            # Crea sonidos temporales si hay error
             self.crear_sonidos_temporales()
     
     def crear_sonido_temporal(self, nombre):
@@ -247,6 +280,7 @@ class SistemaSonido:
         self.sonidos[nombre] = self.crear_sonido_simple(freq, duration)
     
     def crear_sonidos_temporales(self):
+        """Crea todos los sonidos temporales"""
         self.sonidos = {
             'inicio': self.crear_sonido_simple(523, 1000),
             'movimiento': self.crear_sonido_simple(262, 100),
@@ -258,20 +292,23 @@ class SistemaSonido:
         }
     
     def crear_sonido_simple(self, frecuencia, duracion):
+ #crear sonidos de onda cmo backup aca"
         try:
-            sample_rate = 22050     #sonido basico con pygame
+            sample_rate = 22050#sonido basico con pygame
             frames = int(duracion * sample_rate / 1000.0)
-            sound_bytes = bytearray()   #hacemso un arreglo o lista de bytes para le sonido como cuando ussbamos bitarray y esoss cods
+            sound_bytes = bytearray()#hacemso un arreglo o lista de bytes para le sonido como cuando ussbamos bitarray y esoss cods
             for i in range(frames):
                 t = float(i) / sample_rate #hacemso uan onda simple para porbar
                 val = int(127 + 127 * math.sin(2.0 * math.pi * frecuencia * t))
                 sound_bytes.append(val)
-            return pygame.mixer.Sound(bytes(sound_bytes))   #aca convertimos a sonido de pygame
+            return pygame.mixer.Sound(bytes(sound_bytes))#aca convertimos a sonido de pygame
         except Exception as e:
-            print(f"Error creando sonido temporal: {e}")        # Si falla
+            print(f"Error creando sonido temporal: {e}")
+            # Si falla, crea un sonido más simple
             return pygame.mixer.Sound(buffer=bytes([128]*1000))
     
     def reproducir(self, nombre, volumen=1.0):
+        """Reproduce un sonido con volumen específico"""
         if self.sonidos and nombre in self.sonidos:
             try:
                 self.sonidos[nombre].set_volume(volumen)
@@ -280,20 +317,22 @@ class SistemaSonido:
                 print(f"Error reproduciendo {nombre}: {e}")
     
     def detener(self, nombre):
+        """Detiene un sonido específico"""
         if self.sonidos and nombre in self.sonidos:
             try:
                 self.sonidos[nombre].stop()
             except:
                 pass
-            
+    
     def detener_todo(self):
+        """Detiene todos los sonidos"""
         try:
             pygame.mixer.stop()
         except:
             pass
 
+# ================== SISTEMA DE PUNTAJES ==================
 
- #================== SISTEMA DE PUNTAJES ==============
 class SistemaPuntajes:
     def __init__(self, archivo="puntajes.json"):
         self.archivo = archivo
@@ -347,9 +386,8 @@ class SistemaPuntajes:
     def obtener_top_5(self, modo):
         return self.puntajes_escape if modo == "ESCAPA" else self.puntajes_cazador
 
-    
+# ================== CLASE JUEGO CON SISTEMA DE TRAMPAS MEJORADO ==================
 
-# Clase Juego (Pygame)
 class Juego:
     def __init__(self, ancho=ANCHO_MAPA, alto=ALTO_MAPA, num_enemigos=3):
         self.mapa = Mapa(ancho, alto)
@@ -395,7 +433,10 @@ class Juego:
         self.tiempo_inicio = time.time()
         self.ultimo_movimiento_enemigos = pygame.time.get_ticks()
 
+
         self.sonido.reproducir('inicio', volumen=0.7)
+
+
         
         inicio = (1, 1)
         salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
@@ -485,9 +526,8 @@ class Juego:
                     self.sonido.reproducir('movimiento')
                     return True
         return False
-    
 
-    #SISTEMA DE TRAMPAS MEJORADO
+    #  SISTEMA DE TRAMPAS MEJORADO
     def colocar_trampa(self):
         """Coloca una trampa en modo ESCAPA - IMPLEMENTA TODAS LAS CONDICIONES"""
         if not self.juego_activo or self.modo_juego != "ESCAPA":
@@ -522,7 +562,7 @@ class Juego:
                     trampas_a_eliminar.append(trampa)
                     enemigos_a_eliminar.append(enemigo)
                     
-                    # Bono de puntos por eliminar enemigo (25 puntos por enemigo)
+                    # ✅ Bono de puntos por eliminar enemigo (25 puntos por enemigo)
                     bonus = 25
                     self.puntos += bonus
                     self.enemigos_atrapados += 1
@@ -535,7 +575,7 @@ class Juego:
         
         for enemigo in enemigos_a_eliminar:
             self.enemigos.remove(enemigo)
-            # Respawn después de 10 segundos
+            #  Respawn después de 10 segundos
             self._programar_respawn(enemigo)
         
         return len(enemigos_a_eliminar) > 0
@@ -596,6 +636,7 @@ class Juego:
     def verificar_estado_juego(self):
         if not self.juego_activo:
             return "continuar", self.puntos
+            
         salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
         jugador_pos = (self.jugador.x, self.jugador.y)
         
@@ -632,14 +673,17 @@ class Juego:
                 if (e.x, e.y) == salida:
                     self.enemigo_escapa(e)
                     self._respawn_enemigo(e)
+        
         return "continuar", self.puntos
 
     def actualizar_energia(self):
         if self.juego_activo and self.jugador.energia < 100:
             self.jugador.energia = min(100, self.jugador.energia + 0.5)
+
 # ================== INTERFAZ DE USUARIO ==================
+
 class VentanaPuntajes:
-    def _init_(self, pantalla, sistema_puntajes):
+    def __init__(self, pantalla, sistema_puntajes):
         self.pantalla = pantalla
         self.sistema_puntajes = sistema_puntajes
         self.font = pygame.font.Font(None, 36)
@@ -656,6 +700,7 @@ class VentanaPuntajes:
                         self.corriendo = False
                 elif evento.type == pygame.MOUSEBUTTONDOWN:
                     self.corriendo = False
+            
             self.dibujar()
             pygame.display.flip()
     
@@ -685,141 +730,9 @@ class VentanaPuntajes:
         
         instrucciones = self.font_chica.render("Presiona ESC, ENTER o haz clic para volver", True, BLANCO)
         self.pantalla.blit(instrucciones, (ANCHO_VENTANA//2 - instrucciones.get_width()//2, 350))
-
 
 class AppPygame:
     def __init__(self):
-        self.ventana = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA))
-        pygame.display.set_caption("Laberinto - POO")
-        self.reloj = pygame.time.Clock()
-        
-        self.juego = Juego(ANCHO_MAPA, ALTO_MAPA, num_enemigos=4)
-        
-        self.corriendo = True
-        self.estado = "registro"
-        self.nombre_input = ""
-        self.modo_seleccionado = "ESCAPA"
-        
-        self.font = pygame.font.Font(None, 36)
-        self.font_chica = pygame.font.Font(None, 24)
-        self.mensaje_temporal = ""
-        self.tiempo_mensaje = 0
-
-        #IMPORTANTOISIMO EL CONTROL DE LA MUSICA
-        self.musica_reproduciendo = False
-        self.reproducir_musica_menu()
-
-    def mostrar_pantalla_registro(self):
-        self.ventana.fill(NEGRO)
-        
-        titulo = self.font.render("REGISTRO DE JUGADOR", True, BLANCO)
-        self.ventana.blit(titulo, (ANCHO_VENTANA//2 - titulo.get_width()//2, 50))
-        
-        texto_nombre = self.font_chica.render("Nombre del jugador:", True, BLANCO)
-        self.ventana.blit(texto_nombre, (ANCHO_VENTANA//2 - 150, 150))
-        
-        input_rect = pygame.Rect(ANCHO_VENTANA//2 - 150, 180, 300, 40)
-        pygame.draw.rect(self.ventana, BLANCO, input_rect, 2)
-        
-        nombre_texto = self.font_chica.render(self.nombre_input, True, BLANCO)
-        self.ventana.blit(nombre_texto, (input_rect.x + 5, input_rect.y + 10))
-        
-        if int(time.time() * 2) % 2 == 0:
-            cursor_x = input_rect.x + 5 + nombre_texto.get_width()
-            pygame.draw.line(self.ventana, BLANCO, 
-                           (cursor_x, input_rect.y + 5),
-                           (cursor_x, input_rect.y + 35), 2)
-        
-        texto_modo = self.font_chica.render("Modo de juego:", True, BLANCO)
-        self.ventana.blit(texto_modo, (ANCHO_VENTANA//2 - 150, 250))
-        
-        color_escape = VERDE_CAMINO if self.modo_seleccionado == "ESCAPA" else GRIS
-        color_cazador = ROJO_JUGADOR if self.modo_seleccionado == "CAZADOR" else GRIS
-        
-        escape_rect = pygame.Rect(ANCHO_VENTANA//2 - 150, 290, 140, 40)
-        cazador_rect = pygame.Rect(ANCHO_VENTANA//2 + 10, 290, 140, 40)
-        
-        pygame.draw.rect(self.ventana, color_escape, escape_rect)
-        pygame.draw.rect(self.ventana, color_cazador, cazador_rect)
-        
-        texto_escape = self.font_chica.render("ESCAPA", True, BLANCO)
-        texto_cazador = self.font_chica.render("CAZADOR", True, BLANCO)
-        
-        self.ventana.blit(texto_escape, (escape_rect.centerx - texto_escape.get_width()//2, 
-                                       escape_rect.centery - texto_escape.get_height()//2))
-        self.ventana.blit(texto_cazador, (cazador_rect.centerx - texto_cazador.get_width()//2, 
-                                        cazador_rect.centery - texto_cazador.get_height()//2))
-        
-        iniciar_rect = pygame.Rect(ANCHO_VENTANA//2 - 75, 350, 150, 50)
-        color_iniciar = AZUL_ENEMIGO if self.nombre_input.strip() else GRIS
-        pygame.draw.rect(self.ventana, color_iniciar, iniciar_rect)
-        
-        texto_iniciar = self.font.render("INICIAR", True, BLANCO)
-        self.ventana.blit(texto_iniciar, (iniciar_rect.centerx - texto_iniciar.get_width()//2, 
-                                        iniciar_rect.centery - texto_iniciar.get_height()//2))
-        
-        puntajes_rect = pygame.Rect(ANCHO_VENTANA//2 - 75, 420, 150, 40)
-        pygame.draw.rect(self.ventana, MORADO_TUNEL, puntajes_rect)
-        texto_puntajes = self.font_chica.render("VER PUNTAJES", True, BLANCO)
-        self.ventana.blit(texto_puntajes, (puntajes_rect.centerx - texto_puntajes.get_width()//2, 
-                                         puntajes_rect.centery - texto_puntajes.get_height()//2))
-        
-        return iniciar_rect, puntajes_rect, escape_rect, cazador_rect
-
-
-
-# ================== INTERFAZ DE USUARIO ==================
-class VentanaPuntajes:
-    def _init_(self, pantalla, sistema_puntajes):
-        self.pantalla = pantalla
-        self.sistema_puntajes = sistema_puntajes
-        self.font = pygame.font.Font(None, 36)
-        self.font_chica = pygame.font.Font(None, 24)
-        self.corriendo = True
-    
-    def ejecutar(self):
-        while self.corriendo:
-            for evento in pygame.event.get():
-                if evento.type == pygame.QUIT:
-                    self.corriendo = False
-                elif evento.type == pygame.KEYDOWN:
-                    if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_RETURN:
-                        self.corriendo = False
-                elif evento.type == pygame.MOUSEBUTTONDOWN:
-                    self.corriendo = False
-            self.dibujar()
-            pygame.display.flip()
-    
-    def dibujar(self):
-        self.pantalla.fill(NEGRO)
-        
-        titulo = self.font.render("TOP 5 PUNTAJES", True, BLANCO)
-        self.pantalla.blit(titulo, (ANCHO_VENTANA//2 - titulo.get_width()//2, 50))
-        
-        escape_titulo = self.font_chica.render("MODO ESCAPA", True, VERDE_CAMINO)
-        self.pantalla.blit(escape_titulo, (100, 120))
-        
-        escape_puntajes = self.sistema_puntajes.obtener_top_5("ESCAPA")
-        for i, puntaje in enumerate(escape_puntajes):
-            texto = f"{i+1}. {puntaje['nombre']}: {puntaje['puntos']} pts"
-            texto_surface = self.font_chica.render(texto, True, BLANCO)
-            self.pantalla.blit(texto_surface, (100, 160 + i * 30))
-        
-        cazador_titulo = self.font_chica.render("MODO CAZADOR", True, ROJO_JUGADOR)
-        self.pantalla.blit(cazador_titulo, (400, 120))
-        
-        cazador_puntajes = self.sistema_puntajes.obtener_top_5("CAZADOR")
-        for i, puntaje in enumerate(cazador_puntajes):
-            texto = f"{i+1}. {puntaje['nombre']}: {puntaje['puntos']} pts"
-            texto_surface = self.font_chica.render(texto, True, BLANCO)
-            self.pantalla.blit(texto_surface, (400, 160 + i * 30))
-        
-        instrucciones = self.font_chica.render("Presiona ESC, ENTER o haz clic para volver", True, BLANCO)
-        self.pantalla.blit(instrucciones, (ANCHO_VENTANA//2 - instrucciones.get_width()//2, 350))
-
-# Clase principal de la aplicación en Pygame
-class AppPygame:
-    def _init_(self):
         self.ventana = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA))
         pygame.display.set_caption("Laberinto - POO")
         self.reloj = pygame.time.Clock()
@@ -913,6 +826,7 @@ class AppPygame:
                     self.modo_seleccionado = "CAZADOR" if self.modo_seleccionado == "ESCAPA" else "ESCAPA"
                     self.juego.sonido.reproducir('movimiento', volumen=0.3)
 
+
                 elif evento.key == pygame.K_p:
                     self.mostrar_ventana_puntajes()
                 
@@ -942,6 +856,7 @@ class AppPygame:
         ventana_puntajes.ejecutar()
 
     def dibujar_juego(self):
+        # Dibujar mapa CON COLORES CORREGIDOS
         for x in range(self.juego.mapa.alto):
             for y in range(self.juego.mapa.ancho):
                 casilla = self.juego.mapa.objetos[x][y]
@@ -952,9 +867,9 @@ class AppPygame:
                 elif isinstance(casilla, Muro):
                     color = AZUL_MURO
                 elif isinstance(casilla, Liana):
-                    color = AMARILLO_LIANA  # Lianas = amarillas (solo enemigos)
+                    color = AMARILLO_LIANA  #  Lianas = amarillas (solo enemigos)
                 elif isinstance(casilla, Tunel):
-                    color = MORADO_TUNEL    # Túneles = morados (solo jugador)
+                    color = MORADO_TUNEL    #  Túneles = morados (solo jugador)
                 else:
                     color = NEGRO
                     
@@ -986,11 +901,17 @@ class AppPygame:
         panel_rect = pygame.Rect(0, ALTO_MAPA * TAMANO_CELDA, ANCHO_VENTANA, 100)
         pygame.draw.rect(self.ventana, (50, 50, 50), panel_rect)
 
+
+
+
+
         if self.juego.modo_juego == "ESCAPA":
             modo_texto = "Coloca trampas con ESPACIO"
             modo_surface = self.font_chica.render(modo_texto, True, NARANJA_TRAMPA)
             self.ventana.blit(modo_surface, (ANCHO_VENTANA//2 - modo_surface.get_width()//2,ALTO_MAPA * TAMANO_CELDA + 10))
 
+
+        
         info_texto = f"Jugador: {self.juego.nombre_jugador} | Modo: {self.juego.modo_juego}"
         info_surface = self.font_chica.render(info_texto, True, BLANCO)
         self.ventana.blit(info_surface, (10, ALTO_MAPA * TAMANO_CELDA + 40 if self.juego.modo_juego == "ESCAPA" else ALTO_MAPA * TAMANO_CELDA + 10))
@@ -1005,10 +926,12 @@ class AppPygame:
             tiempo_surface = self.font_chica.render(tiempo_texto, True, BLANCO)
             self.ventana.blit(tiempo_surface, (ANCHO_VENTANA - 150, ALTO_MAPA * TAMANO_CELDA + 10))
             
+            #  Información de trampas
             trampas_texto = f"Trampas: {3 - len(self.juego.trampas)}/3"
             trampas_surface = self.font_chica.render(trampas_texto, True, BLANCO)
             self.ventana.blit(trampas_surface, (ANCHO_VENTANA//2 - 50, ALTO_MAPA * TAMANO_CELDA + 40))
-            
+        
+            #  Cooldown de trampas
             tiempo_actual = time.time()
             if tiempo_actual - self.juego.ultima_trampa_tiempo < 5:
                 cooldown = 5 - (tiempo_actual - self.juego.ultima_trampa_tiempo)
@@ -1019,6 +942,11 @@ class AppPygame:
             stats_texto = f"Atrapados: {self.juego.enemigos_atrapados}/10 | Escapados: {self.juego.enemigos_escapados}"
             stats_surface = self.font_chica.render(stats_texto, True, BLANCO)
             self.ventana.blit(stats_surface, (ANCHO_VENTANA - 300, ALTO_MAPA * TAMANO_CELDA + 10))
+
+
+
+
+
 
         energia_texto = f"Energía: {int(self.juego.jugador.energia)}/100"
         energia_surface = self.font_chica.render(energia_texto, True, BLANCO)
@@ -1054,6 +982,7 @@ class AppPygame:
                 elif evento.key == pygame.K_p:
                     self.mostrar_ventana_puntajes()
                 elif evento.key == pygame.K_SPACE and self.juego.modo_juego == "ESCAPA":
+                    # ✅ COLOCAR TRAMPA SOLO EN MODO ESCAPA
                     exito, mensaje = self.juego.colocar_trampa()
                     self.mostrar_mensaje_temporal(mensaje)
                 elif evento.key == pygame.K_ESCAPE:
@@ -1134,7 +1063,7 @@ class AppPygame:
                 # Actualizar enemigos periódicamente
                 if tiempo_actual - self.juego.ultimo_movimiento_enemigos > self.juego.intervalo_movimiento:
                     self.juego.actualizar_enemigos()
-                    self.juego.verificar_trampas()  # ✅ Verificar trampas cada actualización
+                    self.juego.verificar_trampas()  #  Verificar trampas cada actualización
                     self.juego.ultimo_movimiento_enemigos = tiempo_actual
                     self.verificar_estado_juego()
                 
@@ -1157,6 +1086,6 @@ class AppPygame:
         pygame.quit()
 
 # ================== EJECUCIÓN ==================
-if __name__ == "_main_":
+if __name__ == "__main__":
     app = AppPygame()
     app.ejecutar()
