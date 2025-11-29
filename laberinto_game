@@ -768,201 +768,52 @@ class AppPygame:
 
 
 
-# ================== INTERFAZ DE USUARIO ==================
-class VentanaPuntajes:
-    def _init_(self, pantalla, sistema_puntajes):
-        self.pantalla = pantalla
-        self.sistema_puntajes = sistema_puntajes
-        self.font = pygame.font.Font(None, 36)
-        self.font_chica = pygame.font.Font(None, 24)
-        self.corriendo = True
-    
-    def ejecutar(self):
-        while self.corriendo:
-            for evento in pygame.event.get():
-                if evento.type == pygame.QUIT:
-                    self.corriendo = False
-                elif evento.type == pygame.KEYDOWN:
-                    if evento.key == pygame.K_ESCAPE or evento.key == pygame.K_RETURN:
-                        self.corriendo = False
-                elif evento.type == pygame.MOUSEBUTTONDOWN:
-                    self.corriendo = False
-            self.dibujar()
-            pygame.display.flip()
-    
-    def dibujar(self):
-        self.pantalla.fill(NEGRO)
-        
-        titulo = self.font.render("TOP 5 PUNTAJES", True, BLANCO)
-        self.pantalla.blit(titulo, (ANCHO_VENTANA//2 - titulo.get_width()//2, 50))
-        
-        escape_titulo = self.font_chica.render("MODO ESCAPA", True, VERDE_CAMINO)
-        self.pantalla.blit(escape_titulo, (100, 120))
-        
-        escape_puntajes = self.sistema_puntajes.obtener_top_5("ESCAPA")
-        for i, puntaje in enumerate(escape_puntajes):
-            texto = f"{i+1}. {puntaje['nombre']}: {puntaje['puntos']} pts"
-            texto_surface = self.font_chica.render(texto, True, BLANCO)
-            self.pantalla.blit(texto_surface, (100, 160 + i * 30))
-        
-        cazador_titulo = self.font_chica.render("MODO CAZADOR", True, ROJO_JUGADOR)
-        self.pantalla.blit(cazador_titulo, (400, 120))
-        
-        cazador_puntajes = self.sistema_puntajes.obtener_top_5("CAZADOR")
-        for i, puntaje in enumerate(cazador_puntajes):
-            texto = f"{i+1}. {puntaje['nombre']}: {puntaje['puntos']} pts"
-            texto_surface = self.font_chica.render(texto, True, BLANCO)
-            self.pantalla.blit(texto_surface, (400, 160 + i * 30))
-        
-        instrucciones = self.font_chica.render("Presiona ESC, ENTER o haz clic para volver", True, BLANCO)
-        self.pantalla.blit(instrucciones, (ANCHO_VENTANA//2 - instrucciones.get_width()//2, 350))
-
-
-
-
-class AppPygame:
-    def __init__(self):
-        self.ventana = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA))
-        pygame.display.set_caption("Laberinto - POO")
-        self.reloj = pygame.time.Clock()
-        
-        self.juego = Juego(ANCHO_MAPA, ALTO_MAPA, num_enemigos=4)
-        
-        self.corriendo = True
-        self.estado = "registro"
-        self.nombre_input = ""
-        self.modo_seleccionado = "ESCAPA"
-        
-        self.font = pygame.font.Font(None, 36)
-        self.font_chica = pygame.font.Font(None, 24)
-        self.mensaje_temporal = ""
-        self.tiempo_mensaje = 0
-
-        #IMPORTANTOISIMO EL CONTROL DE LA MUSICA
-        self.musica_reproduciendo = False
-        self.reproducir_musica_menu()
-
-    def mostrar_pantalla_registro(self):
-        self.ventana.fill(NEGRO)
-        
-        titulo = self.font.render("REGISTRO DE JUGADOR", True, BLANCO)
-        self.ventana.blit(titulo, (ANCHO_VENTANA//2 - titulo.get_width()//2, 50))
-        
-        texto_nombre = self.font_chica.render("Nombre del jugador:", True, BLANCO)
-        self.ventana.blit(texto_nombre, (ANCHO_VENTANA//2 - 150, 150))
-        
-        input_rect = pygame.Rect(ANCHO_VENTANA//2 - 150, 180, 300, 40)
-        pygame.draw.rect(self.ventana, BLANCO, input_rect, 2)
-        
-        nombre_texto = self.font_chica.render(self.nombre_input, True, BLANCO)
-        self.ventana.blit(nombre_texto, (input_rect.x + 5, input_rect.y + 10))
-        
-        if int(time.time() * 2) % 2 == 0:
-            cursor_x = input_rect.x + 5 + nombre_texto.get_width()
-            pygame.draw.line(self.ventana, BLANCO, 
-                           (cursor_x, input_rect.y + 5),
-                           (cursor_x, input_rect.y + 35), 2)
-        
-        texto_modo = self.font_chica.render("Modo de juego:", True, BLANCO)
-        self.ventana.blit(texto_modo, (ANCHO_VENTANA//2 - 150, 250))
-        
-        color_escape = VERDE_CAMINO if self.modo_seleccionado == "ESCAPA" else GRIS
-        color_cazador = ROJO_JUGADOR if self.modo_seleccionado == "CAZADOR" else GRIS
-        
-        escape_rect = pygame.Rect(ANCHO_VENTANA//2 - 150, 290, 140, 40)
-        cazador_rect = pygame.Rect(ANCHO_VENTANA//2 + 10, 290, 140, 40)
-        
-        pygame.draw.rect(self.ventana, color_escape, escape_rect)
-        pygame.draw.rect(self.ventana, color_cazador, cazador_rect)
-        
-        texto_escape = self.font_chica.render("ESCAPA", True, BLANCO)
-        texto_cazador = self.font_chica.render("CAZADOR", True, BLANCO)
-        
-        self.ventana.blit(texto_escape, (escape_rect.centerx - texto_escape.get_width()//2, 
-                                       escape_rect.centery - texto_escape.get_height()//2))
-        self.ventana.blit(texto_cazador, (cazador_rect.centerx - texto_cazador.get_width()//2, 
-                                        cazador_rect.centery - texto_cazador.get_height()//2))
-        
-        iniciar_rect = pygame.Rect(ANCHO_VENTANA//2 - 75, 350, 150, 50)
-        color_iniciar = AZUL_ENEMIGO if self.nombre_input.strip() else GRIS
-        pygame.draw.rect(self.ventana, color_iniciar, iniciar_rect)
-        
-        texto_iniciar = self.font.render("INICIAR", True, BLANCO)
-        self.ventana.blit(texto_iniciar, (iniciar_rect.centerx - texto_iniciar.get_width()//2, 
-                                        iniciar_rect.centery - texto_iniciar.get_height()//2))
-        
-        puntajes_rect = pygame.Rect(ANCHO_VENTANA//2 - 75, 420, 150, 40)
-        pygame.draw.rect(self.ventana, MORADO_TUNEL, puntajes_rect)
-        texto_puntajes = self.font_chica.render("VER PUNTAJES", True, BLANCO)
-        self.ventana.blit(texto_puntajes, (puntajes_rect.centerx - texto_puntajes.get_width()//2, 
-                                         puntajes_rect.centery - texto_puntajes.get_height()//2))
-        
-        return iniciar_rect, puntajes_rect, escape_rect, cazador_rect
-
-    def manejar_eventos_registro(self):
-        iniciar_rect, puntajes_rect, escape_rect, cazador_rect = self.mostrar_pantalla_registro()
-        
-        for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                self.corriendo = False
-            
-            elif evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_RETURN and self.nombre_input.strip():
-                    self.detener_musica()#detenrlaal inciiciar juego 
-                    self.juego.sonido.reproducir('inicio')#pornerl a del inicio 
-
-                    if self.modo_seleccionado == "ESCAPA":
-                        self.juego.sonido.reproducir('modo_escape', volumen=0.7)
-                    else:   
-                        self.juego.sonido.reproducir('modo_cazador', volumen=0.7)
-                    self.juego.iniciar(self.nombre_input, self.modo_seleccionado)
-                    self.estado = "jugando"
-                
-                elif evento.key == pygame.K_BACKSPACE:
-                    self.nombre_input = self.nombre_input[:-1]
-                
-                elif evento.key == pygame.K_TAB:
-                    self.modo_seleccionado = "CAZADOR" if self.modo_seleccionado == "ESCAPA" else "ESCAPA"
-                    self.juego.sonido.reproducir('movimiento', volumen=0.3)
-
-
-                elif evento.key == pygame.K_p:
-                    self.mostrar_ventana_puntajes()
-                
-                else:
-                    if len(self.nombre_input) < 20 and evento.unicode.isprintable():
-                        self.nombre_input += evento.unicode
-            
-            elif evento.type == pygame.MOUSEBUTTONDOWN:
-                if iniciar_rect.collidepoint(evento.pos) and self.nombre_input.strip():
-                    self.detener_musica()#DETENER MÚSICA DEL MENÚ AL INICIAR JUEGO
-                    self.juego.sonido.reproducir('inicio')
-
-                    if self.modo_seleccionado == "ESCAPA":
-                        self.juego.sonido.reproducir('modo_escape', volumen=0.7)
-                    else:   
-                        self.juego.sonido.reproducir('modo_cazador', volumen=0.7)
-
-                    self.juego.iniciar(self.nombre_input, self.modo_seleccionado)
-                    self.estado = "jugando"
-                
-                elif puntajes_rect.collidepoint(evento.pos):
-                    self.mostrar_ventana_puntajes()
-                
-                elif escape_rect.collidepoint(evento.pos):
-                    self.modo_seleccionado = "ESCAPA"
-                    self.juego.sonido.reproducir('modo_escape', volumen=0.7)
-                    self.juego.sonido.reproducir('modo_escape', volumen=0.7)  # Sonido de escapar
-          
-                
-                elif cazador_rect.collidepoint(evento.pos):
-                    self.modo_seleccionado = "CAZADOR"
-                    self.juego.sonido.reproducir('movimiento', volumen=0.3)
-                    self.juego.sonido.reproducir('modo_cazador', volumen=0.7)#Sonido pal cazador
-    
     def mostrar_ventana_puntajes(self):
         ventana_puntajes = VentanaPuntajes(self.ventana, self.juego.puntajes)
         ventana_puntajes.ejecutar()
+
+    def dibujar_juego(self):
+        # Dibujar mapa CON COLORES CORREGIDOS
+        for x in range(self.juego.mapa.alto):
+            for y in range(self.juego.mapa.ancho):
+                casilla = self.juego.mapa.objetos[x][y]
+                rect = pygame.Rect(y * TAMANO_CELDA, x * TAMANO_CELDA, TAMANO_CELDA, TAMANO_CELDA)
+                
+                if isinstance(casilla, Camino):
+                    color = VERDE_CAMINO
+                elif isinstance(casilla, Muro):
+                    color = AZUL_MURO
+                elif isinstance(casilla, Liana):
+                    color = AMARILLO_LIANA  # ✅ Lianas = amarillas (solo enemigos)
+                elif isinstance(casilla, Tunel):
+                    color = MORADO_TUNEL    # ✅ Túneles = morados (solo jugador)
+                else:
+                    color = NEGRO
+                    
+                pygame.draw.rect(self.ventana, color, rect)
+                pygame.draw.rect(self.ventana, GRIS, rect, 1)
+        
+        # Dibujar trampas
+        for trampa in self.juego.trampas:
+            rect = pygame.Rect(trampa.y * TAMANO_CELDA, trampa.x * TAMANO_CELDA, TAMANO_CELDA, TAMANO_CELDA)
+            pygame.draw.rect(self.ventana, NARANJA_TRAMPA, rect)
+            pygame.draw.line(self.ventana, BLANCO, 
+                           (trampa.y * TAMANO_CELDA, trampa.x * TAMANO_CELDA),
+                           ((trampa.y + 1) * TAMANO_CELDA, (trampa.x + 1) * TAMANO_CELDA), 2)
+            pygame.draw.line(self.ventana, BLANCO,
+                           ((trampa.y + 1) * TAMANO_CELDA, trampa.x * TAMANO_CELDA),
+                           (trampa.y * TAMANO_CELDA, (trampa.x + 1) * TAMANO_CELDA), 2)
+        
+        # Dibujar jugador
+        jx, jy = self.juego.jugador.x, self.juego.jugador.y
+        pygame.draw.rect(self.ventana, ROJO_JUGADOR, 
+                        (jy * TAMANO_CELDA, jx * TAMANO_CELDA, TAMANO_CELDA, TAMANO_CELDA))
+        
+        # Dibujar enemigos
+        for e in self.juego.enemigos:
+            pygame.draw.rect(self.ventana, AZUL_ENEMIGO, 
+                            (e.y * TAMANO_CELDA, e.x * TAMANO_CELDA, TAMANO_CELDA, TAMANO_CELDA))
+
 # Clase principal de la aplicación en Pygame
 
 
