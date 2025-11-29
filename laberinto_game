@@ -4,7 +4,49 @@ import time
 import json
 import os
 from collections import deque
-import math#usmaso el math para el isstema d esonidos
+import math
+
+# ================== CONFIGURACIÓN AUTOMÁTICA DE RUTAS ==================
+def configurar_rutas():
+    """
+    Configura automáticamente las rutas para que funcione en cualquier computadora
+    Busca la carpeta 'sonidos' en diferentes ubicaciones posibles
+    """
+    print(" Configurando rutas automáticamente...")
+    
+    # Obtener la ruta donde está este archivo Python
+    ruta_script = os.path.dirname(os.path.abspath(__file__))
+    
+    # Rutas posibles donde buscar la carpeta 'sonidos'
+    rutas_posibles = [
+        ruta_script,  # Donde está el script
+        os.getcwd(),  # Directorio actual de trabajo
+        os.path.join(ruta_script, '_PROYECTO_2'),  # Si está dentro de _PROYECTO_2
+        ruta_script  # Misma carpeta
+    ]
+    
+    # Buscar la carpeta 'sonidos'
+    for ruta_base in rutas_posibles:
+        ruta_sonidos = os.path.join(ruta_base, 'sonidos')
+        if os.path.exists(ruta_sonidos) and os.path.isdir(ruta_sonidos):
+            print(f" Carpeta 'sonidos' encontrada en: {ruta_sonidos}")
+            
+            # Verificar archivos de audio
+            archivos_audio = os.listdir(ruta_sonidos)
+            print(f" Archivos de audio encontrados: {archivos_audio}")
+            
+            # Cambiar al directorio correcto
+            os.chdir(ruta_base)
+            print(f" Directorio de trabajo establecido: {ruta_base}")
+            return True
+    
+    print(" No se encontró la carpeta 'sonidos'")
+    print(" Asegúrate de que la carpeta 'sonidos' esté en la misma carpeta que laberinto.py")
+    return False
+
+# Ejecutar configuración automática
+configuracion_exitosa = configurar_rutas()
+print(f" Directorio final: {os.getcwd()}")
 
 # ================== INICIALIZACIÓN ==================
 pygame.init()
@@ -17,22 +59,22 @@ ANCHO_VENTANA = ANCHO_MAPA * TAMANO_CELDA
 ALTO_VENTANA = ALTO_MAPA * TAMANO_CELDA + 100
 FPS = 60
 
-# Colores CORREGIDOS según tu descripción
+# Colores
 NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 GRIS = (128, 128, 128)
 VERDE_CAMINO = (46, 204, 113)
 AZUL_MURO = (52, 73, 94)
-MORADO_TUNEL = (155, 89, 182)        # Túneles: morados (solo jugador)
-AMARILLO_LIANA = (241, 196, 15)      # Lianas: amarillas (solo enemigos)
+MORADO_TUNEL = (155, 89, 182)
+AMARILLO_LIANA = (241, 196, 15)
 ROJO_JUGADOR = (231, 76, 60)
 AZUL_ENEMIGO = (52, 152, 219)
 VERDE_ENERGIA = (39, 174, 96)
 ROJO_ENERGIA = (192, 57, 43)
-NARANJA_TRAMPA = (230, 126, 34)      # Color para trampas
+NARANJA_TRAMPA = (230, 126, 34)
 
 # ================== CLASES BÁSICAS ==================
-
+# (Mantén todas tus clases Casilla, Mapa, Entidad, Jugador, Enemigo, Trampa igual que antes)
 class Casilla:
     def __init__(self, x, y):
         self.x = x
@@ -132,9 +174,9 @@ class Mapa:
                 elif valor == 1: 
                     fila.append(Muro(x, y))
                 elif valor == 2: 
-                    fila.append(Liana(x, y))  # Lianas = amarillas
+                    fila.append(Liana(x, y))
                 elif valor == 3: 
-                    fila.append(Tunel(x, y))  # Túneles = morados
+                    fila.append(Tunel(x, y))
                 else:
                     fila.append(Muro(x, y))
             objetos.append(fila)
@@ -148,7 +190,11 @@ class Mapa:
         if v == 1:  # Muro
             return False
         if v == 2:  # Liana -> solo enemigo
-            return not es_jugador
+            if not es_jugador:
+                return True  # Enemigos siempre sí
+        else:
+            # Para jugador, depende del modo (se maneja en mover_jugador)
+            return False  # Por defecto no, pero se sobreescribe en la lógica del juego
         if v == 3:  # Túnel -> solo jugador
             return es_jugador
         return False
@@ -198,8 +244,6 @@ class Enemigo(Entidad):
         super().__init__(x, y)
         self.vivo = True
 
-# ================== CLASE TRAMPA MEJORADA ==================
-
 class Trampa:
     def __init__(self, x, y):
         self.x = x
@@ -209,130 +253,174 @@ class Trampa:
         self.tiempo_activacion = time.time()
 
     def verificar_tiempo_vida(self):
-        """Verifica si la trampa ha estado activa por más de 30 segundos"""
         return time.time() - self.tiempo_activacion < 30
 
-# ================== SISTEMA DE SONIDO ==================
+# ================== SISTEMA DE SONIDO CORREGIDO ==================
+# ================== SISTEMA DE SONIDO CORREGIDO ==================
 
 class SistemaSonido:
     def __init__(self):
         try:
             pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
             self.sonidos = {}
+            self.musica_actual = None
             self.cargar_sonidos()
+            print(" Sistema de sonido inicializado correctamente")
         except Exception as e:
-            print(f"Advertencia: No se pudo inicializar el sistema de sonido - {e}")
+            print(f"  No se pudo inicializar el sistema de sonido: {e}")
             self.sonidos = None
     
+    def obtener_ruta_sonido(self, archivo):
+        """Busca el archivo de sonido en diferentes ubicaciones"""
+        rutas_posibles = [
+            os.path.join('sonidos', archivo),
+            os.path.join(os.getcwd(), 'sonidos', archivo),
+            archivo  # Ruta directa
+]
+        
+        for ruta in rutas_posibles:
+            if os.path.exists(ruta):
+                print(f"Encontrado: {ruta}")
+                return ruta
+            else:
+                print(f" No encontrado: {ruta}")
+        
+        return None
+    
     def cargar_sonidos(self):
-        """Carga archivos de sonido reales desde la carpeta 'sonidos'"""
+        """Carga los archivos de sonido REALES"""
         try:
-            # Diccionario de sonidos a cargar
-            archivos_sonidos = {
-                'inicio': 'inicio.wav',
-                'movimiento': 'movimiento.wav', 
-                'trampa': 'trampa.wav',
-                'victoria': 'victoria.wav',
-                'derrota': 'derrota.wav',
-                'enemigo_atrapado': 'enemigo_atrapado.wav',
-                'menu': 'menu.wav'
+            # ARCHIVOS REALES QUE TIENES
+            archivos_reales = {
+                'menu_principal': 'SuperHero_original.ogg',
+                'modo_escape': 'computer_world.mp3', 
+                'modo_cazador': 'creepy_piano.mp3'
             }
             
-            for nombre, archivo in archivos_sonidos.items():
-                ruta = os.path.join('sonidos', archivo)
-                if os.path.exists(ruta):
-                    self.sonidos[nombre] = pygame.mixer.Sound(ruta)
-                    print(f" Sonido cargado: {archivo}")
+            print(" Cargando archivos de sonido...")
+            
+            for nombre, archivo in archivos_reales.items():
+                ruta = self.obtener_ruta_sonido(archivo)
+                if ruta:
+                    try:
+                        # Para música usamos pygame.mixer.music
+                        if nombre in ['menu_principal', 'modo_escape', 'modo_cazador']:
+                            # Solo verificamos que existe, no cargamos como Sound
+                            self.sonidos[nombre] = ruta
+                            print(f" Música lista: {archivo}")
+                        else:
+                            self.sonidos[nombre] = pygame.mixer.Sound(ruta)
+                            print(f" Sonido cargado: {archivo}")
+                    except Exception as e:
+                        print(f"⚠️  Error cargando {archivo}: {e}")
+                        self.crear_sonido_temporal(nombre)
                 else:
-                    # Si no existe el archivo, crea un sonido temporal
-                    print(f"  Archivo no encontrado: {ruta}, creando sonido temporal")
+                    print(f"📁 Archivo no encontrado en ninguna ubicación: {archivo}")
                     self.crear_sonido_temporal(nombre)
                     
+            # Crear efectos de sonido temporales
+            efectos = ['movimiento', 'trampa', 'victoria', 'derrota', 'enemigo_atrapado']
+            for efecto in efectos:
+                if efecto not in self.sonidos:
+                    self.crear_sonido_temporal(efecto)
+                    
         except Exception as e:
-            print(f"Error cargando sonidos: {e}")
-            # Crea sonidos temporales si hay error
+            print(f" Error en carga de sonidos: {e}")
             self.crear_sonidos_temporales()
     
     def crear_sonido_temporal(self, nombre):
-        """Crea un sonido simple temporal si no existe el archivo"""
-        frecuencias = {
-            'inicio': 523,      # Do
-            'movimiento': 262,  # Do bajo
-            'trampa': 330,      # Mi
-            'victoria': 784,    # Sol
-            'derrota': 196,     # Sol bajo
-            'enemigo_atrapado': 392,  # Sol
-            'menu': 440         # La
-        }
-        
-        duraciones = {
-            'inicio': 1000,
-            'movimiento': 100,
-            'trampa': 500, 
-            'victoria': 1500,
-            'derrota': 1000,
-            'enemigo_atrapado': 300,
-            'menu': 2000
-        }
-        
-        freq = frecuencias.get(nombre, 440)
-        duration = duraciones.get(nombre, 500)
-        self.sonidos[nombre] = self.crear_sonido_simple(freq, duration)
+        """Crea sonido temporal"""
+        try:
+            sample_rate = 22050
+            frames = 1000
+            
+            sound_data = bytearray()
+            for i in range(frames):
+                t = i / sample_rate
+                if nombre == 'movimiento':
+                    freq = 300
+                elif nombre == 'trampa':
+                    freq = 200
+                elif nombre == 'victoria':
+                    freq = 600
+                elif nombre == 'derrota':
+                    freq = 150
+                else:
+                    freq = 440
+                    
+                valor = int(127 + 127 * math.sin(2.0 * math.pi * freq * t))
+                sound_data.append(min(255, max(0, valor)))
+            
+            self.sonidos[nombre] = pygame.mixer.Sound(buffer=bytes(sound_data))
+            print(f" Sonido temporal creado: {nombre}")
+            
+        except Exception as e:
+            print(f"  Error creando sonido temporal: {e}")
+            self.sonidos[nombre] = pygame.mixer.Sound(buffer=bytes([128] * 1000))
     
     def crear_sonidos_temporales(self):
         """Crea todos los sonidos temporales"""
-        self.sonidos = {
-            'inicio': self.crear_sonido_simple(523, 1000),
-            'movimiento': self.crear_sonido_simple(262, 100),
-            'trampa': self.crear_sonido_simple(330, 500),
-            'victoria': self.crear_sonido_simple(784, 1500),
-            'derrota': self.crear_sonido_simple(196, 1000),
-            'enemigo_atrapado': self.crear_sonido_simple(392, 300),
-            'menu': self.crear_sonido_simple(440, 2000)
-        }
+        sonidos_necesarios = ['menu_principal', 'modo_escape', 'modo_cazador', 
+                             'movimiento', 'trampa', 'victoria', 'derrota', 'enemigo_atrapado']
+        for nombre in sonidos_necesarios:
+            self.crear_sonido_temporal(nombre)
     
-    def crear_sonido_simple(self, frecuencia, duracion):
- #crear sonidos de onda cmo backup aca"
+    def reproducir_musica(self, nombre, volumen=0.5, loop=True):
+        """Reproduce música usando pygame.mixer.music"""
         try:
-            sample_rate = 22050#sonido basico con pygame
-            frames = int(duracion * sample_rate / 1000.0)
-            sound_bytes = bytearray()#hacemso un arreglo o lista de bytes para le sonido como cuando ussbamos bitarray y esoss cods
-            for i in range(frames):
-                t = float(i) / sample_rate #hacemso uan onda simple para porbar
-                val = int(127 + 127 * math.sin(2.0 * math.pi * frecuencia * t))
-                sound_bytes.append(val)
-            return pygame.mixer.Sound(bytes(sound_bytes))#aca convertimos a sonido de pygame
+            if nombre in self.sonidos:
+                ruta = self.sonidos[nombre]
+                if isinstance(ruta, str) and os.path.exists(ruta):
+                    pygame.mixer.music.load(ruta)
+                    if loop:
+                        pygame.mixer.music.play(-1)
+                    else:
+                        pygame.mixer.music.play(1)
+                    pygame.mixer.music.set_volume(volumen)
+                    self.musica_actual = nombre
+                    print(f"🎵 Reproduciendo música: {nombre}")
+                    return True
+                else:
+                    print(f" Ruta no válida para {nombre}: {ruta}")
+            else:
+                print(f" Música {nombre} no encontrada en sonidos")
+            return False
         except Exception as e:
-            print(f"Error creando sonido temporal: {e}")
-            # Si falla, crea un sonido más simple
-            return pygame.mixer.Sound(buffer=bytes([128]*1000))
+            print(f"  Error reproduciendo música {nombre}: {e}")
+            return False
     
-    def reproducir(self, nombre, volumen=1.0):
-        """Reproduce un sonido con volumen específico"""
+    def reproducir_efecto(self, nombre, volumen=0.7):
+        """Reproduce efectos de sonido"""
         if self.sonidos and nombre in self.sonidos:
             try:
-                self.sonidos[nombre].set_volume(volumen)
-                self.sonidos[nombre].play()
+                # Si es un efecto (no música), reproducir como Sound
+                if nombre not in ['menu_principal', 'modo_escape', 'modo_cazador']:
+                    self.sonidos[nombre].set_volume(volumen)
+                    self.sonidos[nombre].play()
+                else:
+                    print(f" {nombre} es música, no efecto")
             except Exception as e:
-                print(f"Error reproduciendo {nombre}: {e}")
+                print(f"  Error reproduciendo efecto {nombre}: {e}")
+        else:
+            print(f" Efecto {nombre} no disponible")
     
-    def detener(self, nombre):
-        """Detiene un sonido específico"""
-        if self.sonidos and nombre in self.sonidos:
-            try:
-                self.sonidos[nombre].stop()
-            except:
-                pass
+    def detener_musica(self):
+        """Detiene la música actual"""
+        try:
+            pygame.mixer.music.stop()
+            self.musica_actual = None
+            print("  Música detenida")
+        except Exception as e:
+            print(f"  Error deteniendo música: {e}")
     
     def detener_todo(self):
         """Detiene todos los sonidos"""
         try:
+            pygame.mixer.music.stop()
             pygame.mixer.stop()
         except:
             pass
-
 # ================== SISTEMA DE PUNTAJES ==================
-
 class SistemaPuntajes:
     def __init__(self, archivo="puntajes.json"):
         self.archivo = archivo
@@ -386,8 +474,7 @@ class SistemaPuntajes:
     def obtener_top_5(self, modo):
         return self.puntajes_escape if modo == "ESCAPA" else self.puntajes_cazador
 
-# ================== CLASE JUEGO CON SISTEMA DE TRAMPAS MEJORADO ==================
-
+# ================== CLASE JUEGO PRINCIPAL ==================
 class Juego:
     def __init__(self, ancho=ANCHO_MAPA, alto=ALTO_MAPA, num_enemigos=3):
         self.mapa = Mapa(ancho, alto)
@@ -412,7 +499,7 @@ class Juego:
         
         # Control de tiempo para enemigos
         self.ultimo_movimiento_enemigos = 0
-        self.intervalo_movimiento = 500  # ms
+        self.intervalo_movimiento = 500
 
     def reiniciar_estado(self):
         self.puntos = 0
@@ -426,17 +513,19 @@ class Juego:
 
     def iniciar(self, nombre, modo):
         self.reiniciar_estado()
-        
+    
         self.nombre_jugador = nombre.strip() if nombre.strip() else "Jugador"
         self.modo_juego = modo
         self.juego_activo = True
         self.tiempo_inicio = time.time()
         self.ultimo_movimiento_enemigos = pygame.time.get_ticks()
 
-
-        self.sonido.reproducir('inicio', volumen=0.7)
-
-
+    # Reproducir música del modo correspondiente
+        print(f"🎮 Iniciando juego - Modo: {modo}")  # ← AGREGA ESTA LÍNEA
+        if modo == "ESCAPA":
+            self.sonido.reproducir_musica('modo_escape', volumen=0.5)
+        else:
+            self.sonido.reproducir_musica('modo_cazador', volumen=0.5)
         
         inicio = (1, 1)
         salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
@@ -517,42 +606,44 @@ class Juego:
         
         if 0 <= nx < self.mapa.alto and 0 <= ny < self.mapa.ancho:
             casilla = self.mapa.objetos[nx][ny]
-            if casilla.transitable_por_jugador():
-                # Consumo de energía
+
+            if self.modo_juego == "ESCAPA":
+            # En modo ESCAPA puede pasar por caminos, lianas Y túneles
+                transitable = (isinstance(casilla, Camino) or isinstance(casilla, Liana) or isinstance(casilla, Tunel))
+            else:
+            # En modo CAZADOR solo puede pasar por caminos
+                transitable = isinstance(casilla, Camino)
+        
+            if transitable:
+            # Consumo de energía
                 costo_energia = 2 if self.jugador.corriendo else 1
                 if self.jugador.energia >= costo_energia:
                     self.jugador.energia -= costo_energia
                     self.jugador.mover(nx, ny)
-                    self.sonido.reproducir('movimiento')
+                    self.sonido.reproducir_efecto('movimiento')
                     return True
         return False
 
-    #  SISTEMA DE TRAMPAS MEJORADO
     def colocar_trampa(self):
-        """Coloca una trampa en modo ESCAPA - IMPLEMENTA TODAS LAS CONDICIONES"""
         if not self.juego_activo or self.modo_juego != "ESCAPA":
             return False, "Solo en modo ESCAPA"
             
         tiempo_actual = time.time()
         
-        # Verificar límite de 3 trampas activas
         if len(self.trampas) >= 3:
             return False, "Máximo 3 trampas activas"
             
-        # Verificar cooldown (5 segundos)
         if tiempo_actual - self.ultima_trampa_tiempo < 5:
             tiempo_restante = 5 - (tiempo_actual - self.ultima_trampa_tiempo)
             return False, f"Espera {tiempo_restante:.1f}s"
         
-        # Colocar trampa
         nueva_trampa = Trampa(self.jugador.x, self.jugador.y)
         self.trampas.append(nueva_trampa)
         self.ultima_trampa_tiempo = tiempo_actual
-        self.sonido.reproducir('trampa')
+        self.sonido.reproducir_efecto('trampa')
         return True, "Trampa colocada"
 
     def verificar_trampas(self):
-        """Verifica si enemigos caen en trampas - CON BONO DE PUNTOS"""
         trampas_a_eliminar = []
         enemigos_a_eliminar = []
         
@@ -562,32 +653,22 @@ class Juego:
                     trampas_a_eliminar.append(trampa)
                     enemigos_a_eliminar.append(enemigo)
                     
-                    # ✅ Bono de puntos por eliminar enemigo (25 puntos por enemigo)
                     bonus = 25
                     self.puntos += bonus
                     self.enemigos_atrapados += 1
-                    self.sonido.reproducir('trampa')
+                    self.sonido.reproducir_efecto('trampa')
                     break
         
-        # Eliminar trampas y enemigos atrapados
         for trampa in trampas_a_eliminar:
             self.trampas.remove(trampa)
         
         for enemigo in enemigos_a_eliminar:
             self.enemigos.remove(enemigo)
-            #  Respawn después de 10 segundos
-            self._programar_respawn(enemigo)
+            self._respawn_enemigo(enemigo)
         
         return len(enemigos_a_eliminar) > 0
 
-    def _programar_respawn(self, enemigo):
-        """Programa el respawn de un enemigo después de 10 segundos"""
-        # En una implementación completa usaríamos pygame.time.set_timer()
-        # Por simplicidad, respawneamos inmediatamente en una posición aleatoria
-        self._respawn_enemigo(enemigo)
-
     def _respawn_enemigo(self, enemigo):
-        """Respawnea un enemigo en posición aleatoria"""
         opciones = []
         salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
         
@@ -613,9 +694,8 @@ class Juego:
         puntos_finales = max(100, puntos_base - penalizacion_tiempo + bonus_dificultad)
         self.puntos = puntos_finales
         
-        # Guardar puntaje
         self.puntajes.agregar_puntaje(self.nombre_jugador, puntos_finales, "ESCAPA")
-        self.sonido.reproducir('victoria')
+        self.sonido.reproducir_efecto('victoria')
         
         return puntos_finales
 
@@ -624,7 +704,7 @@ class Juego:
         puntos_ganados = 20 * self.num_enemigos
         self.puntos += puntos_ganados
         
-        self.sonido.reproducir('enemigo_atrapado')
+        self.sonido.reproducir_efecto('enemigo_atrapado')
         return puntos_ganados
 
     def enemigo_escapa(self, enemigo):
@@ -640,34 +720,28 @@ class Juego:
         salida = (self.mapa.alto - 2, self.mapa.ancho - 2)
         jugador_pos = (self.jugador.x, self.jugador.y)
         
-        # MODO ESCAPA: Victoria al llegar a la salida
         if self.modo_juego == "ESCAPA" and jugador_pos == salida:
             puntos = self.calcular_puntos_escape()
             self.juego_activo = False
             return "victoria", puntos
         
-        # MODO CAZADOR: Victoria al atrapar 10 enemigos
         elif self.modo_juego == "CAZADOR" and self.enemigos_atrapados >= 10:
             self.puntajes.agregar_puntaje(self.nombre_jugador, self.puntos, "CAZADOR")
-            self.sonido.reproducir('victoria')
+            self.sonido.reproducir_efecto('victoria')
             self.juego_activo = False
             return "victoria", self.puntos
         
-        # Verificar colisiones con enemigos
         for e in self.enemigos:
             if (e.x, e.y) == jugador_pos:
                 if self.modo_juego == "ESCAPA":
-                    # Derrota en modo ESCAPA
-                    self.sonido.reproducir('derrota')
+                    self.sonido.reproducir_efecto('derrota')
                     self.juego_activo = False
                     return "derrota", self.puntos
                 elif self.modo_juego == "CAZADOR":
-                    # Captura en modo CAZADOR
                     self.cazar_enemigo(e)
                     self._respawn_enemigo(e)
                     return "continuar", self.puntos
         
-        # En modo CAZADOR, verificar si enemigos escapan
         if self.modo_juego == "CAZADOR":
             for e in self.enemigos:
                 if (e.x, e.y) == salida:
@@ -749,6 +823,9 @@ class AppPygame:
         self.mensaje_temporal = ""
         self.tiempo_mensaje = 0
 
+        # Reproducir música del menú al iniciar
+        self.juego.sonido.reproducir_musica('menu_principal', volumen=0.5)
+
     def mostrar_pantalla_registro(self):
         self.ventana.fill(NEGRO)
         
@@ -815,7 +892,9 @@ class AppPygame:
             
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_RETURN and self.nombre_input.strip():
-                    self.juego.sonido.reproducir('inicio')
+                    # Detener música del menú e iniciar juego
+                    self.juego.sonido.detener_musica()
+                    self.juego.sonido.reproducir_efecto('movimiento')
                     self.juego.iniciar(self.nombre_input, self.modo_seleccionado)
                     self.estado = "jugando"
                 
@@ -824,8 +903,7 @@ class AppPygame:
                 
                 elif evento.key == pygame.K_TAB:
                     self.modo_seleccionado = "CAZADOR" if self.modo_seleccionado == "ESCAPA" else "ESCAPA"
-                    self.juego.sonido.reproducir('movimiento', volumen=0.3)
-
+                    self.juego.sonido.reproducir_efecto('movimiento', volumen=0.3)
 
                 elif evento.key == pygame.K_p:
                     self.mostrar_ventana_puntajes()
@@ -836,7 +914,8 @@ class AppPygame:
             
             elif evento.type == pygame.MOUSEBUTTONDOWN:
                 if iniciar_rect.collidepoint(evento.pos) and self.nombre_input.strip():
-                    self.juego.sonido.reproducir('inicio')
+                    self.juego.sonido.detener_musica()
+                    self.juego.sonido.reproducir_efecto('movimiento')
                     self.juego.iniciar(self.nombre_input, self.modo_seleccionado)
                     self.estado = "jugando"
                 
@@ -845,18 +924,18 @@ class AppPygame:
                 
                 elif escape_rect.collidepoint(evento.pos):
                     self.modo_seleccionado = "ESCAPA"
-                    self.juego.sonido.reproducir('movimiento', volumen=0.3)
+                    self.juego.sonido.reproducir_efecto('movimiento', volumen=0.3)
                 
                 elif cazador_rect.collidepoint(evento.pos):
                     self.modo_seleccionado = "CAZADOR"
-                    self.juego.sonido.reproducir('movimiento', volumen=0.3)
+                    self.juego.sonido.reproducir_efecto('movimiento', volumen=0.3)
 
     def mostrar_ventana_puntajes(self):
         ventana_puntajes = VentanaPuntajes(self.ventana, self.juego.puntajes)
         ventana_puntajes.ejecutar()
 
     def dibujar_juego(self):
-        # Dibujar mapa CON COLORES CORREGIDOS
+        # Dibujar mapa
         for x in range(self.juego.mapa.alto):
             for y in range(self.juego.mapa.ancho):
                 casilla = self.juego.mapa.objetos[x][y]
@@ -867,9 +946,9 @@ class AppPygame:
                 elif isinstance(casilla, Muro):
                     color = AZUL_MURO
                 elif isinstance(casilla, Liana):
-                    color = AMARILLO_LIANA  #  Lianas = amarillas (solo enemigos)
+                    color = AMARILLO_LIANA
                 elif isinstance(casilla, Tunel):
-                    color = MORADO_TUNEL    #  Túneles = morados (solo jugador)
+                    color = MORADO_TUNEL
                 else:
                     color = NEGRO
                     
@@ -901,17 +980,11 @@ class AppPygame:
         panel_rect = pygame.Rect(0, ALTO_MAPA * TAMANO_CELDA, ANCHO_VENTANA, 100)
         pygame.draw.rect(self.ventana, (50, 50, 50), panel_rect)
 
-
-
-
-
         if self.juego.modo_juego == "ESCAPA":
             modo_texto = "Coloca trampas con ESPACIO"
             modo_surface = self.font_chica.render(modo_texto, True, NARANJA_TRAMPA)
-            self.ventana.blit(modo_surface, (ANCHO_VENTANA//2 - modo_surface.get_width()//2,ALTO_MAPA * TAMANO_CELDA + 10))
+            self.ventana.blit(modo_surface, (ANCHO_VENTANA//2 - modo_surface.get_width()//2, ALTO_MAPA * TAMANO_CELDA + 10))
 
-
-        
         info_texto = f"Jugador: {self.juego.nombre_jugador} | Modo: {self.juego.modo_juego}"
         info_surface = self.font_chica.render(info_texto, True, BLANCO)
         self.ventana.blit(info_surface, (10, ALTO_MAPA * TAMANO_CELDA + 40 if self.juego.modo_juego == "ESCAPA" else ALTO_MAPA * TAMANO_CELDA + 10))
@@ -926,12 +999,10 @@ class AppPygame:
             tiempo_surface = self.font_chica.render(tiempo_texto, True, BLANCO)
             self.ventana.blit(tiempo_surface, (ANCHO_VENTANA - 150, ALTO_MAPA * TAMANO_CELDA + 10))
             
-            #  Información de trampas
             trampas_texto = f"Trampas: {3 - len(self.juego.trampas)}/3"
             trampas_surface = self.font_chica.render(trampas_texto, True, BLANCO)
             self.ventana.blit(trampas_surface, (ANCHO_VENTANA//2 - 50, ALTO_MAPA * TAMANO_CELDA + 40))
-        
-            #  Cooldown de trampas
+            
             tiempo_actual = time.time()
             if tiempo_actual - self.juego.ultima_trampa_tiempo < 5:
                 cooldown = 5 - (tiempo_actual - self.juego.ultima_trampa_tiempo)
@@ -943,25 +1014,19 @@ class AppPygame:
             stats_surface = self.font_chica.render(stats_texto, True, BLANCO)
             self.ventana.blit(stats_surface, (ANCHO_VENTANA - 300, ALTO_MAPA * TAMANO_CELDA + 10))
 
-
-
-
-
-
         energia_texto = f"Energía: {int(self.juego.jugador.energia)}/100"
         energia_surface = self.font_chica.render(energia_texto, True, BLANCO)
         self.ventana.blit(energia_surface, (ANCHO_VENTANA - 150, ALTO_MAPA * TAMANO_CELDA + 40))
-        
+
         barra_rect = pygame.Rect(ANCHO_VENTANA - 150, ALTO_MAPA * TAMANO_CELDA + 70, 120, 15)
         pygame.draw.rect(self.ventana, GRIS, barra_rect)
         energia_ancho = int(120 * (self.juego.jugador.energia / 100))
         energia_color = VERDE_ENERGIA if self.juego.jugador.energia > 30 else ROJO_ENERGIA
         pygame.draw.rect(self.ventana, energia_color, (barra_rect.x, barra_rect.y, energia_ancho, barra_rect.height))
-        
+
         if time.time() - self.tiempo_mensaje < 3 and self.mensaje_temporal:
             mensaje_surface = self.font_chica.render(self.mensaje_temporal, True, BLANCO)
-            self.ventana.blit(mensaje_surface, (ANCHO_VENTANA//2 - mensaje_surface.get_width()//2, 
-                                              ALTO_MAPA * TAMANO_CELDA + 70))
+            self.ventana.blit(mensaje_surface, (ANCHO_VENTANA//2 - mensaje_surface.get_width()//2, ALTO_MAPA * TAMANO_CELDA + 70))
 
     def manejar_eventos_juego(self):
         for evento in pygame.event.get():
@@ -982,12 +1047,13 @@ class AppPygame:
                 elif evento.key == pygame.K_p:
                     self.mostrar_ventana_puntajes()
                 elif evento.key == pygame.K_SPACE and self.juego.modo_juego == "ESCAPA":
-                    # ✅ COLOCAR TRAMPA SOLO EN MODO ESCAPA
                     exito, mensaje = self.juego.colocar_trampa()
                     self.mostrar_mensaje_temporal(mensaje)
                 elif evento.key == pygame.K_ESCAPE:
                     self.estado = "registro"
                     self.nombre_input = ""
+                    # Volver a reproducir música del menú
+                    self.juego.sonido.reproducir_musica('menu_principal', volumen=0.5)
             
             elif evento.type == pygame.KEYUP:
                 if evento.key == pygame.K_LSHIFT:
@@ -1041,6 +1107,8 @@ class AppPygame:
                 if evento.key == pygame.K_r:
                     self.estado = "registro"
                     self.nombre_input = ""
+                    # Reproducir música del menú
+                    self.juego.sonido.reproducir_musica('menu_principal', volumen=0.5)
                 elif evento.key == pygame.K_ESCAPE:
                     self.corriendo = False
                 elif evento.key == pygame.K_p:
@@ -1063,7 +1131,7 @@ class AppPygame:
                 # Actualizar enemigos periódicamente
                 if tiempo_actual - self.juego.ultimo_movimiento_enemigos > self.juego.intervalo_movimiento:
                     self.juego.actualizar_enemigos()
-                    self.juego.verificar_trampas()  #  Verificar trampas cada actualización
+                    self.juego.verificar_trampas()
                     self.juego.ultimo_movimiento_enemigos = tiempo_actual
                     self.verificar_estado_juego()
                 
